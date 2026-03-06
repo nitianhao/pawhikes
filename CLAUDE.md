@@ -67,3 +67,21 @@ npx tsx scripts/dev/store-highlights-profile.ts --city Austin [--slug <slug>] [-
 npm run gen:faqs                     # Generate FAQs → out/faqs/*.json (no DB write)
 npm run store:faqs -- --write        # Write generated FAQs to InstantDB
 ```
+
+## Available Custom Tools
+
+### Slash Commands
+- `/commit` — stage and create a conventional-format git commit (asks before committing; suggests splitting if changes span multiple concerns)
+- `/fix-issue <n>` — fetch GitHub issue #n, present a fix plan for approval, implement, and summarize changes (does not auto-commit or open a PR)
+- `/review` — review all uncommitted changes against bugs, security issues, performance, and test coverage
+
+### Skills (use automatically when relevant)
+- `architecture-review` — use when creating new files/modules, refactoring, or making structural decisions to verify alignment with project patterns
+- `write-tests` — use after writing or modifying any function/component to ensure proper test coverage with arrange-act-assert structure
+
+### Sub-Agents (delegate tasks to these)
+- `code-reviewer` — delegate PR/large-diff reviews or code quality assessments; returns findings grouped by CRITICAL / WARNING / SUGGESTION
+- `researcher` — delegate codebase exploration, doc lookups, or multi-source technical investigations; returns TL;DR + cited sources
+
+### Hooks (run automatically)
+- None configured — `.claude/settings.local.json` contains only tool permission allowlists, no hook definitions

@@ -125,7 +125,21 @@
       "Bash(git remote add origin https://github.com/nitianhao/pawhikes.git)",
       "Bash(git add .)",
       "Bash(git rm -r --cached . -q)",
-      "Bash(git rm -r --cached . -q --force)"
+      "Bash(git rm -r --cached . -q --force)",
+      "Bash(git commit:*)",
+      "Bash(git push -u origin main)",
+      "Skill(keybindings-help)",
+      "Skill(keybindings-help:*)",
+      "mcp__ef15e249-2683-487f-9258-5ebf118d9658__resolve-library-id",
+      "Bash(ls \"/Users/michalpekarcik/barkTrails/src/app/\\(site\\)/\")",
+      "Bash(find /Users/michalpekarcik/barkTrails/src/lib/instant -name \"schema.ts\" -exec head -60 {} ;)",
+      "Bash(ls /Users/michalpekarcik/barkTrails/.prettierrc*)",
+      "Bash(ls /Users/michalpekarcik/barkTrails/prettier.config*)",
+      "Bash(ls -la /Users/michalpekarcik/barkTrails/.env*)",
+      "Bash(ls /Users/michalpekarcik/barkTrails/scripts/deploy*)",
+      "Bash(ls /Users/michalpekarcik/barkTrails/scripts/prod*)",
+      "Bash(ls /Users/michalpekarcik/barkTrails/*.config.*)",
+      "Bash(git add -A)"
     ]
   }
 }
