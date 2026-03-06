@@ -1,0 +1,36 @@
+=== INSTANT CONFIG ===
+appId: 580cf725-8779-4ab8-8a41-f7ad5e037fb4
+adminToken: 2006bc...c386
+extDataset: austin_socrata_jdwm-wfps
+======================
+preExistingAppId: (none)
+preExistingToken: (none)
+Admin SDK initialized OK
+
+--- Schema presence check ---
+  OK trails
+  OK trailHeads
+  OK trailSystems
+  OK trailSegments
+Schema check passed.
+
+Fetched 1000 records (offset=0, total=1000)
+Fetched 296 records (offset=1000, total=1296)
+
+Total records fetched: 1296
+Systems upserted: 55
+  Segments upserted 200/1296...
+  Segments upserted 400/1296...
+  Segments upserted 600/1296...
+  Segments upserted 800/1296...
+  Segments upserted 1000/1296...
+  Segments upserted 1200/1296...
+  Segments upserted 1296/1296...
+
+=== INGEST SUMMARY ===
+extDataset:        austin_socrata_jdwm-wfps
+totalFetched:      1296
+systemsUpserted:   55
+segmentsUpserted:  1296
+skipped:           0
+======================

@@ -1,0 +1,242 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Paw Hikes design tokens */
+:root {
+  --bark-green-50:  #f0fdf4;
+  --bark-green-100: #dcfce7;
+  --bark-green-200: #bbf7d0;
+  --bark-green-400: #4ade80;
+  --bark-green-500: #22c55e;
+  --bark-green-600: #16a34a;
+  --bark-green-700: #15803d;
+  --bark-green-900: #14532d;
+  --bark-earth:     #78350f;
+  --bark-amber:     #f59e0b;
+  --bark-amber-50:  #fffbeb;
+  --bark-sand:      #fef3c7;
+  --bark-sky:       #0ea5e9;
+  --bark-slate:     #64748b;
+  --bark-red:       #dc2626;
+  --bark-red-50:    #fef2f2;
+  --bark-purple-50: #faf5ff;
+  --bark-purple:    #7c3aed;
+}
+
+body {
+  font-family: var(--font-inter, system-ui, -apple-system, sans-serif);
+}
+
+/* ── SiteHeader responsive layout ────────────────────────────────────────── */
+.site-header__desktop { display: none; }
+.site-header__mobile  { display: flex; }
+
+@media (min-width: 768px) {
+  .site-header__desktop { display: flex !important; }
+  .site-header__mobile  { display: none !important; }
+}
+
+
+/* ── City page map ───────────────────────────────────────────────────────── */
+/* Loading skeleton + paw spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Map wrapper: mobile-first height, rounded corners */
+.city-map-wrap {
+  height: 240px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.07);
+}
+@media (min-width: 640px) {
+  .city-map-wrap { height: 320px; }
+}
+@media (min-width: 768px) {
+  .city-map-wrap { height: 400px; }
+}
+
+/* Leaflet tooltip — Paw Hikes theme */
+.city-trail-tooltip.leaflet-tooltip {
+  background: #14532d;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  border-radius: 7px;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  padding: 7px 11px;
+  font-family: var(--font-inter, system-ui, sans-serif);
+}
+/* Tooltip arrow */
+.city-trail-tooltip.leaflet-tooltip-top::before {
+  border-top-color: #14532d;
+}
+.city-trail-tooltip.leaflet-tooltip-bottom::before {
+  border-bottom-color: #14532d;
+}
+
+/* City trail card hover */
+.city-trail-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.09);
+  border-color: #d1fae5 !important;
+}
+
+/* ── CollapsibleSection / InsightCard: keep focus visible for keyboard users */
+.collapsible-summary:focus-visible {
+  outline: 2px solid var(--bark-green-600);
+  outline-offset: 2px;
+}
+
+/* InsightCard: subtle details toggle */
+.insight-card-summary:hover {
+  color: #334155;
+  text-decoration: underline;
+}
+
+/* TrailDashboard: always single-column — wide InsightCards handle their own internal responsive layout.
+   A 2-column grid at 768px would squish every wide card to 50% width. */
+@media (min-width: 1024px) {
+  .trail-dashboard {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* InsightCard wide layout: full-width header, then 2-column content grid; no float/absolute/translate */
+.insight-card-wide-wrap {
+  box-sizing: border-box;
+}
+
+/* Full-width header row (direct child of section, not inside grid) */
+.insight-card--wide .insight-card__header-row {
+  width: 100%;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+/* Content grid: single column by default (mobile). Inline style sets display/gap/padding. */
+.insight-card--wide .insight-card__inner {
+  grid-template-columns: 1fr !important;
+}
+
+/* Desktop: split into 2fr 1fr only when a sidebar is actually present; otherwise stay full-width */
+@media (min-width: 1024px) {
+  .insight-card--wide .insight-card__inner:has(.insight-card__sidebar) {
+    grid-template-columns: 2fr 1fr !important;
+  }
+  .insight-card--wide .insight-card__main {
+    min-width: 0;
+    width: 100%;
+  }
+  .insight-card--wide .insight-card__sidebar {
+    position: sticky !important;
+    top: 1.5rem !important;
+    align-self: start !important;
+  }
+}
+
+/* Sidebar (Quick stats card): fill right column width */
+.insight-card--wide .insight-card__sidebar {
+  width: 100%;
+  justify-self: stretch;
+  box-sizing: border-box;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background-color: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+/* MetricGrid: 3 columns on desktop when wide */
+@media (min-width: 1024px) {
+  .metric-grid--wide {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* DogPolicyBanner */
+.dog-policy-banner {
+  padding: 1rem;
+}
+@media (min-width: 640px) {
+  .dog-policy-banner {
+    padding: 1.5rem;
+  }
+}
+
+.dog-policy-chips {
+  grid-template-columns: 1fr !important;
+}
+@media (min-width: 640px) {
+  .dog-policy-chips {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* TrailEffortCard: compact scale bar — left (title + scale) | right (chips) on desktop */
+.trail-effort-card-root {
+  padding: 0;
+}
+.trail-effort-content-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.trail-effort-left {
+  min-width: 0;
+}
+.trail-effort-chips-wrap {
+  min-width: 0;
+}
+@media (min-width: 768px) {
+  .trail-effort-content-row {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .trail-effort-left {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .trail-effort-chips-wrap {
+    flex: 0 0 auto;
+    align-self: center;
+  }
+}
+
+/* DogTypesSection: 2-column grid, collapses to 1 on narrow screens */
+.dog-types-grid {
+  grid-template-columns: repeat(2, 1fr) !important;
+}
+@media (max-width: 480px) {
+  .dog-types-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Certified badge by trail title: icon only, text on hover */
+.certified-badge-by-title-label {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #b45309;
+  transition: opacity 0.2s ease, max-width 0.2s ease;
+}
+.certified-badge-by-title:hover .certified-badge-by-title-label {
+  max-width: 12rem;
+  opacity: 1;
+}
