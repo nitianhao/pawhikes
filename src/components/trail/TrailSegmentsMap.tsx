@@ -841,8 +841,8 @@ export function TrailSegmentsMap({
               const distKm = (v.distanceToCentroidMeters / 1000).toFixed(1);
               const kindLabel = v.kind === "emergency_vet" ? "Emergency Vet" : v.kind === "animal_hospital" ? "Animal Hospital" : "Veterinarian";
               const address = [v.tags["addr:housenumber"], v.tags["addr:street"], v.tags["addr:city"]].filter(Boolean).join(" ");
-              const website = v.tags.website ?? v.tags["contact:website"] ?? null;
-              const phone = v.tags.phone ?? v.tags["contact:phone"] ?? null;
+              const website = (v.tags.website ?? v.tags["contact:website"] ?? null) as string | null;
+              const phone = (v.tags.phone ?? v.tags["contact:phone"] ?? null) as string | null;
               return (
                 <Marker key={v.osmId} position={[v.lat, v.lon]} icon={makeCircleIcon(color, 18)}>
                   <Popup>
