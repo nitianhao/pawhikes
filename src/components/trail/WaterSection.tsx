@@ -1,4 +1,4 @@
-import { Droplet, MapPin, Waves } from "lucide-react";
+import { Droplet, Waves } from "lucide-react";
 import { WaterProfileChart, type WaterProfilePoint } from "./WaterProfileChart";
 
 const TYPE_LABELS: Record<string, string> = {
@@ -114,14 +114,6 @@ type WaterSectionProps = {
   lengthMilesTotal?: number | null;
 };
 
-function renderDetailValue(v: unknown): string {
-  if (v == null) return "\u2014";
-  if (typeof v === "string") return v.trim() || "\u2014";
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (Array.isArray(v)) return v.map((x) => String(x)).join(", ") || "\u2014";
-  return JSON.stringify(v);
-}
-
 export function WaterSection({
   waterNearScore,
   waterNearPercent,
@@ -145,30 +137,25 @@ export function WaterSection({
   const swim = normalizeSwim(swimLikely);
   const summary = buildSummary(pctDisplay, swim, types);
   const typesDisplay = types.slice(0, 3).join(" \u2022 ") || "Unknown";
+  const typesList = types.length > 0 ? types.slice(0, 4) : ["Unknown"];
 
   return (
     <section style={S.section}>
       {/* Header */}
-      <div style={S.headerRow}>
+      <div className="section-header-row">
         <h2 style={S.title}>Water</h2>
         <p style={S.subtitle}>Hydration &amp; splash potential</p>
       </div>
 
       {/* Chips row */}
       <div style={S.chipsRow}>
-        <div style={S.chip}>
+        <div style={S.chip} className="water-stat-chip">
           <Droplet size={14} style={{ flexShrink: 0, color: "#0ea5e9" }} />
           <span style={S.chipText}>Near water: <strong>{pctDisplay}%</strong></span>
         </div>
-        <div style={S.chip}>
+        <div style={S.chip} className="water-stat-chip">
           <Waves size={14} style={{ flexShrink: 0, color: "#0ea5e9" }} />
           <span style={S.chipText}>Swim: <strong>{swimLabel(swim)}</strong></span>
-        </div>
-        <div style={{ ...S.chip, flex: "1 1 auto", minWidth: 0 }}>
-          <MapPin size={14} style={{ flexShrink: 0, color: "#6b7280" }} />
-          <span style={{ ...S.chipText, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>
-            {typesDisplay}
-          </span>
         </div>
       </div>
 
@@ -207,29 +194,27 @@ export function WaterSection({
         </div>
       )}
 
-      {/* Summary text */}
-      <p style={S.summaryText}>{summary}</p>
-
-      {/* Details disclosure */}
-      <details style={S.details}>
-        <summary style={S.summaryRow}>
-          <span>Data details</span>
-          <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>\u25BC</span>
-        </summary>
-        <div style={S.detailsList}>
-          {([
-            ["Water near score", waterNearScore],
-            ["Water near percent", waterNearPercent],
-            ["Water types nearby", waterTypesNearby],
-            ["Swim likely", swimLikely],
-          ] as [string, unknown][]).map(([label, value]) => (
-            <div key={label} style={S.detailRow}>
-              <span>{label}</span>
-              <span style={S.detailVal}>{renderDetailValue(value)}</span>
-            </div>
-          ))}
+      {/* Compact summary */}
+      <div className="water-compact-wrap" style={S.compactWrap}>
+        <div style={S.compactCard} className="water-compact-card">
+          <p style={S.compactTitle}>Water types nearby</p>
+          <div style={S.typesWrap}>
+            {typesList.map((type) => (
+              <span key={type} style={S.typePill}>
+                {type}
+              </span>
+            ))}
+            {types.length > typesList.length ? (
+              <span style={S.typePillMuted}>+{types.length - typesList.length} more</span>
+            ) : null}
+          </div>
+          <p style={S.typesInline}>{typesDisplay}</p>
         </div>
-      </details>
+        <div style={S.compactCard} className="water-compact-card">
+          <p style={S.compactTitle}>Quick read</p>
+          <p style={S.summaryText}>{summary}</p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -240,12 +225,6 @@ const S = {
     border: "1px solid #e5e7eb",
     borderRadius: "0.75rem",
     padding: "0.9rem",
-  } as const,
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "0.75rem",
   } as const,
   title: { margin: 0, fontSize: "1.25rem", fontWeight: 600, color: "#111827" } as const,
   subtitle: { margin: 0, fontSize: "0.85rem", color: "#6b7280" } as const,
@@ -289,44 +268,58 @@ const S = {
     background: "#e5e7eb",
   } as const,
   summaryText: {
-    margin: "0.55rem 0 0",
-    fontSize: "0.85rem",
+    margin: "0.32rem 0 0",
+    fontSize: "0.82rem",
     lineHeight: 1.5,
     color: "#374151",
-    display: "-webkit-box",
-    WebkitLineClamp: 2,
-    WebkitBoxOrient: "vertical" as const,
-    overflow: "hidden",
   } as const,
-  details: {
-    marginTop: "0.55rem",
+  compactWrap: {
+    marginTop: "0.6rem",
+    gap: "0.55rem",
+  } as const,
+  compactCard: {
     border: "1px solid #e5e7eb",
-    borderRadius: "0.5rem",
-    background: "white",
-    padding: "0.4rem 0.6rem",
+    borderRadius: "0.55rem",
+    background: "#fff",
+    padding: "0.5rem 0.6rem",
   } as const,
-  summaryRow: {
+  compactTitle: {
+    margin: 0,
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase" as const,
+    color: "#6b7280",
+  } as const,
+  typesWrap: {
+    marginTop: "0.32rem",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    cursor: "pointer",
-    fontSize: "0.82rem",
-    fontWeight: 500,
-    color: "#374151",
+    flexWrap: "wrap" as const,
+    gap: "0.3rem",
   } as const,
-  detailsList: { marginTop: "0.35rem" } as const,
-  detailRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0.15rem 0",
-    borderBottom: "1px solid #f1f5f9",
-    fontSize: "0.8rem",
-    color: "#374151",
-  } as const,
-  detailVal: {
+  typePill: {
+    display: "inline-block",
+    borderRadius: "9999px",
+    border: "1px solid #bae6fd",
+    background: "#f0f9ff",
+    padding: "0.15rem 0.45rem",
+    fontSize: "0.74rem",
     fontWeight: 600,
-    fontVariantNumeric: "tabular-nums" as const,
-    color: "#111827",
+    color: "#0c4a6e",
+  } as const,
+  typePillMuted: {
+    display: "inline-block",
+    borderRadius: "9999px",
+    border: "1px solid #e2e8f0",
+    background: "#f8fafc",
+    padding: "0.15rem 0.45rem",
+    fontSize: "0.74rem",
+    fontWeight: 600,
+    color: "#64748b",
+  } as const,
+  typesInline: {
+    margin: "0.32rem 0 0",
+    fontSize: "0.76rem",
+    color: "#374151",
   } as const,
 } as const;

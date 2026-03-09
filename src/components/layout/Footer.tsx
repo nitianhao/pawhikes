@@ -22,7 +22,7 @@ const topRowStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "space-between",
   gap: "1rem",
-  marginBottom: "1rem",
+  marginBottom: "0.75rem",
 };
 
 const copyrightStyle: React.CSSProperties = {
@@ -33,12 +33,12 @@ const copyrightStyle: React.CSSProperties = {
 const linksStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: "1.25rem",
+  gap: "1rem",
 };
 
 const linkStyle: React.CSSProperties = {
   fontSize: "0.875rem",
-  color: "#64748b",
+  color: "#475569",
   textDecoration: "none",
 };
 
@@ -56,19 +56,16 @@ export function Footer() {
         <div style={topRowStyle}>
           <span style={copyrightStyle}>© {currentYear} Paw Hikes</span>
           <div style={linksStyle}>
-            <Link href="/data-sources" style={linkStyle}>
-              Data sources
+            <Link href="/" style={linkStyle}>
+              Home
             </Link>
-            <Link href="/disclaimer" style={linkStyle}>
-              Disclaimer
-            </Link>
-            <Link href="/contact" style={linkStyle}>
-              Contact
+            <Link href="/#coverage" style={linkStyle}>
+              Coverage
             </Link>
           </div>
         </div>
         <p style={disclaimerStyle}>
-          Trail data is best-effort; verify local rules and conditions.
+          Structured trail data is maintained on a best-effort basis. Confirm local dog rules, access policies, and live conditions before each hike.
         </p>
       </div>
     </footer>

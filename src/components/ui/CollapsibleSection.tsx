@@ -46,7 +46,7 @@ const styles = {
 export function CollapsibleSection({
   id,
   title,
-  defaultOpen = false,
+  defaultOpen = true,
   meta,
   children,
 }: {

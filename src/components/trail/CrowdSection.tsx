@@ -247,53 +247,16 @@ export function CrowdSection({
         </div>
       ) : null}
 
-      {/* F) Full data disclosure */}
-      <details style={S.details}>
-        <summary style={S.detailsSummary}>Data details</summary>
-        <div style={S.detailsInner}>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>crowdClass (raw)</span>
-            <span style={S.detailVal}>{crowdClass ?? "—"}</span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>crowdProxyScore (raw)</span>
-            <span style={S.detailVal}>
-              {crowdProxyScore != null ? String(crowdProxyScore) : "—"}
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>crowdLastComputedAt</span>
-            <span style={S.detailVal}>
-              {crowdLastComputedAt != null ? String(crowdLastComputedAt) : "—"}{" "}
-              ({updatedStr})
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>crowdReasons (raw)</span>
-            <span style={{ ...S.detailVal, maxWidth: "70%", wordBreak: "break-word" }}>
-              {crowdReasons != null ? String(crowdReasons) : "—"}
-            </span>
-          </div>
-          <div style={{ marginTop: "0.35rem" }}>
-            <span style={S.detailKey}>crowdSignals</span>
-            <pre style={S.rawPre}>
-              {crowdSignals != null
-                ? JSON.stringify(crowdSignals, null, 2)
-                : "—"}
-            </pre>
-          </div>
-        </div>
-      </details>
     </section>
   );
 }
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "1rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
   } as const,
   headerRow: {
     display: "flex",
@@ -303,18 +266,18 @@ const S = {
     flexWrap: "wrap" as const,
   } as const,
   headerLeft: { minWidth: 0 } as const,
-  updated: { margin: 0, fontSize: "0.8rem", color: "#6b7280", flexShrink: 0 } as const,
+  updated: { margin: 0, fontSize: "0.75rem", color: "#6b7280", flexShrink: 0 } as const,
   title: {
     margin: 0,
-    fontSize: "1.25rem",
+    fontSize: "1.1rem",
     fontWeight: 600,
     color: "#111827",
     display: "inline-flex",
     alignItems: "center",
   } as const,
-  subtitle: { margin: 0, fontSize: "0.85rem", color: "#6b7280" } as const,
+  subtitle: { margin: 0, fontSize: "0.78rem", color: "#6b7280" } as const,
   headlineRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.4rem",
     display: "flex",
     alignItems: "center",
     gap: "0.6rem",
@@ -323,29 +286,29 @@ const S = {
   badge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "0.25rem 0.6rem",
+    padding: "0.2rem 0.5rem",
     borderRadius: "999px",
-    fontSize: "0.9rem",
+    fontSize: "0.82rem",
     fontWeight: 700,
   } as const,
   scorePill: {
-    fontSize: "0.95rem",
+    fontSize: "0.88rem",
     fontWeight: 700,
     color: "#111827",
     fontVariantNumeric: "tabular-nums" as const,
   } as const,
   reasonsLine: {
     marginTop: "0.25rem",
-    fontSize: "0.82rem",
+    fontSize: "0.76rem",
     lineHeight: 1.4,
     color: "#6b7280",
     display: "-webkit-box",
-    WebkitLineClamp: 2,
+    WebkitLineClamp: 1,
     WebkitBoxOrient: "vertical" as const,
     overflow: "hidden",
   } as const,
   gaugeRow: {
-    marginTop: "0.6rem",
+    marginTop: "0.4rem",
     display: "flex",
     alignItems: "center",
     gap: "0.35rem",
@@ -367,7 +330,7 @@ const S = {
     background: "#e5e7eb",
   } as const,
   chipsRow: {
-    marginTop: "0.6rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.4rem",
@@ -379,60 +342,25 @@ const S = {
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
     background: "white",
-    padding: "0.3rem 0.55rem",
-    fontSize: "0.82rem",
+    padding: "0.22rem 0.45rem",
+    fontSize: "0.75rem",
     color: "#374151",
     whiteSpace: "nowrap" as const,
   } as const,
-  chipText: { fontSize: "0.82rem", color: "#374151" } as const,
+  chipText: { fontSize: "0.75rem", color: "#374151" } as const,
   tipCallout: {
-    marginTop: "0.6rem",
+    marginTop: "0.35rem",
     display: "flex",
     alignItems: "flex-start",
     gap: "0.4rem",
-    padding: "0.4rem 0.55rem",
+    padding: "0.3rem 0.45rem",
     border: "1px solid #e0e7ff",
     borderRadius: "0.5rem",
     background: "#eef2ff",
   } as const,
   tipText: {
-    fontSize: "0.82rem",
+    fontSize: "0.76rem",
     lineHeight: 1.45,
     color: "#3730a3",
-  } as const,
-  details: { marginTop: "0.75rem" } as const,
-  detailsSummary: {
-    cursor: "pointer",
-    fontSize: "0.82rem",
-    fontWeight: 600,
-    color: "#374151",
-  } as const,
-  detailsInner: { marginTop: "0.5rem", paddingLeft: "0.25rem" } as const,
-  detailRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-    padding: "0.2rem 0",
-    fontSize: "0.8rem",
-    borderBottom: "1px solid #f1f5f9",
-  } as const,
-  detailKey: { color: "#6b7280", fontFamily: "monospace" } as const,
-  detailVal: {
-    fontFamily: "monospace",
-    fontSize: "0.78rem",
-    color: "#111827",
-    wordBreak: "break-word" as const,
-  } as const,
-  rawPre: {
-    marginTop: "0.35rem",
-    padding: "0.5rem",
-    border: "1px solid #e5e7eb",
-    borderRadius: "0.45rem",
-    background: "#f8fafc",
-    fontSize: "0.72rem",
-    whiteSpace: "pre-wrap" as const,
-    wordBreak: "break-word" as const,
-    maxHeight: "200px",
-    overflow: "auto",
   } as const,
 } as const;

@@ -57,25 +57,6 @@ function formatPct(x: number | null | undefined): string {
   return `${pct.toFixed(1)}%`;
 }
 
-function formatScore(x: number | null | undefined): string {
-  if (x == null || !Number.isFinite(x)) return "—";
-  return x <= 1 ? Number(x).toFixed(4) : String(x);
-}
-
-function formatDate(value: number | string | null | undefined): string {
-  if (value == null) return "—";
-  const numeric = typeof value === "string" ? Number(value) : value;
-  const parsed = new Date(numeric);
-  if (Number.isNaN(parsed.getTime())) return String(value);
-  return parsed.toLocaleString();
-}
-
-function formatCount(value: unknown): string {
-  if (typeof value === "number" && Number.isFinite(value)) return String(value);
-  if (typeof value === "string" && value.trim()) return value;
-  return "—";
-}
-
 function interpretShade(shadeClass: string | null | undefined, shadeProxyPercent: number | null | undefined): string {
   const tier = asShadeTier(shadeClass, shadeProxyPercent);
   if (tier === "HIGH") {
@@ -104,6 +85,40 @@ function extractShadeSources(shadeSources: unknown): ShadeSourcesMetrics {
   };
 }
 
+type ShadeBand = "sun" | "partial" | "shade" | "dense";
+
+function toShadeBand(shade: number): ShadeBand {
+  if (shade >= 0.8) return "dense";
+  if (shade >= 0.4) return "shade";
+  if (shade >= 0.1) return "partial";
+  return "sun";
+}
+
+function computeShadeMix(points: ShadeProfilePoint[] | null | undefined, totalMiles: number | null | undefined): Record<ShadeBand, number> {
+  const out: Record<ShadeBand, number> = { sun: 0, partial: 0, shade: 0, dense: 0 };
+  if (!points || points.length < 2) return out;
+  const maxD = totalMiles != null && Number.isFinite(totalMiles) && totalMiles > 0 ? totalMiles : points[points.length - 1].d;
+  if (!(maxD > 0)) return out;
+
+  let covered = 0;
+  for (let i = 0; i < points.length; i += 1) {
+    const start = points[i].d;
+    const end = i < points.length - 1 ? points[i + 1].d : maxD;
+    const span = Math.max(0, end - start);
+    if (span <= 0) continue;
+    out[toShadeBand(points[i].shade)] += span;
+    covered += span;
+  }
+
+  if (covered <= 0) return out;
+  return {
+    sun: (out.sun / covered) * 100,
+    partial: (out.partial / covered) * 100,
+    shade: (out.shade / covered) * 100,
+    dense: (out.dense / covered) * 100,
+  };
+}
+
 const THEME: Record<ShadeTier, { badgeBg: string; badgeText: string; fill: string; soft: string }> = {
   HIGH: {
     badgeBg: "#166534",
@@ -127,20 +142,23 @@ const THEME: Record<ShadeTier, { badgeBg: string; badgeText: string; fill: strin
 
 export function ShadeSection({
   shadeClass,
-  shadeLastComputedAt,
   shadeProxyPercent,
-  shadeProxyScore,
-  shadeSources,
   shadeProfilePoints,
   lengthMilesTotal,
 }: ShadeSectionProps) {
   const tier = asShadeTier(shadeClass, shadeProxyPercent);
   const colors = THEME[tier];
   const percent = normalizePercent(shadeProxyPercent);
-  const metrics = extractShadeSources(shadeSources);
+  const shadeMix = computeShadeMix(shadeProfilePoints, lengthMilesTotal);
+  const shadeMixRows: Array<{ key: ShadeBand; label: string; value: number; color: string; border: string }> = [
+    { key: "sun", label: "Sun", value: shadeMix.sun, color: "#fef3c7", border: "#fde68a" },
+    { key: "partial", label: "Partial", value: shadeMix.partial, color: "#bbf7d0", border: "#86efac" },
+    { key: "shade", label: "Shade", value: shadeMix.shade, color: "#4ade80", border: "#22c55e" },
+    { key: "dense", label: "Dense", value: shadeMix.dense, color: "#166534", border: "#14532d" },
+  ];
 
   return (
-    <section style={S.section}>
+    <section style={S.section} className="shade-section-root">
       <h2 style={S.title}>🌳 Shade</h2>
 
       <div style={S.topRow}>
@@ -155,15 +173,6 @@ export function ShadeSection({
             <span style={S.progressText}>{formatPct(shadeProxyPercent)}</span>
           </div>
         </div>
-      </div>
-
-      <div style={S.metaRow}>
-        <span style={S.metaItem}>Proxy score: {formatScore(shadeProxyScore)}</span>
-        <span style={S.metaItem}>Last analyzed: {formatDate(shadeLastComputedAt)}</span>
-      </div>
-
-      <div style={{ ...S.interpretation, background: colors.soft }}>
-        <p style={S.interpretationText}>{interpretShade(shadeClass, shadeProxyPercent)}</p>
       </div>
 
       {shadeProfilePoints && shadeProfilePoints.length >= 2 && (
@@ -182,34 +191,34 @@ export function ShadeSection({
         </div>
       )}
 
-      <details style={S.details}>
-        <summary style={S.detailsSummary}>Data breakdown</summary>
-
-        <div style={S.statsGrid}>
-          <div style={S.statTile}>
-            <span style={S.statLabel}>Tree rows detected</span>
-            <strong style={S.statValue}>{formatCount(metrics.treeRowCount)}</strong>
-          </div>
-          <div style={S.statTile}>
-            <span style={S.statLabel}>Medium canopy polygons</span>
-            <strong style={S.statValue}>{formatCount(metrics.mediumPolyCount)}</strong>
-          </div>
-          <div style={S.statTile}>
-            <span style={S.statLabel}>Dense canopy polygons</span>
-            <strong style={S.statValue}>{formatCount(metrics.strongPolyCount)}</strong>
-          </div>
-          <div style={S.statTile}>
-            <span style={S.statLabel}>Tree nodes analyzed</span>
-            <strong style={S.statValue}>{formatCount(metrics.treeNodeCountUsed)}</strong>
+      <div className="shade-compact-wrap" style={S.compactWrap}>
+        <div style={S.compactCard} className="shade-compact-card">
+          <p style={S.compactTitle}>Exposure mix</p>
+          <div style={S.mixList}>
+            {shadeMixRows.map((row) => (
+              <div key={row.key} style={S.mixRow}>
+                <span style={S.mixLabel}>{row.label}</span>
+                <div style={S.mixBarTrack}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${Math.max(2, row.value)}%`,
+                      background: row.color,
+                      borderRight: `1px solid ${row.border}`,
+                    }}
+                  />
+                </div>
+                <span style={S.mixPct}>{row.value.toFixed(0)}%</span>
+              </div>
+            ))}
           </div>
         </div>
 
-        <p style={S.note}>
-          Shade score derived from mapped tree density and canopy polygons near trail geometry.
-        </p>
-
-        <pre style={S.rawPre}>{shadeSources != null ? JSON.stringify(shadeSources, null, 2) : "—"}</pre>
-      </details>
+        <div style={{ ...S.compactCard, background: colors.soft }} className="shade-compact-card">
+          <p style={S.compactTitle}>Quick read</p>
+          <p style={S.compactBody}>{interpretShade(shadeClass, shadeProxyPercent)}</p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -289,79 +298,56 @@ const S = {
     textShadow: "0 1px 1px rgba(0,0,0,0.4)",
     letterSpacing: "0.01em",
   } as const,
-  metaRow: {
-    display: "flex",
-    flexWrap: "wrap" as const,
-    gap: "0.35rem 0.8rem",
-    marginTop: "0.55rem",
+  compactWrap: {
+    marginTop: "0.6rem",
+    gap: "0.6rem",
   } as const,
-  metaItem: {
-    fontSize: "0.76rem",
-    color: "#475569",
-    fontVariantNumeric: "tabular-nums" as const,
-  } as const,
-  interpretation: {
-    marginTop: "0.55rem",
+  compactCard: {
+    border: "1px solid #e2e8f0",
     borderRadius: "0.55rem",
-    padding: "0.45rem 0.55rem",
+    background: "#fff",
+    padding: "0.5rem 0.6rem",
   } as const,
-  interpretationText: {
+  compactTitle: {
     margin: 0,
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase" as const,
+    color: "#64748b",
+  } as const,
+  compactBody: {
+    margin: "0.35rem 0 0",
     fontSize: "0.8rem",
     color: "#1e293b",
-    lineHeight: 1.38,
+    lineHeight: 1.4,
   } as const,
-  details: {
-    marginTop: "0.55rem",
-  } as const,
-  detailsSummary: {
-    cursor: "pointer",
-    fontSize: "0.8rem",
-    color: "#1f2937",
-    fontWeight: 600,
-  } as const,
-  statsGrid: {
-    marginTop: "0.45rem",
-    display: "grid",
-    gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: "0.4rem",
-  } as const,
-  statTile: {
-    border: "1px solid #e2e8f0",
-    borderRadius: "0.45rem",
-    background: "#ffffff",
-    padding: "0.45rem 0.5rem",
+  mixList: {
+    marginTop: "0.35rem",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.1rem",
+    gap: "0.3rem",
   } as const,
-  statLabel: {
-    fontSize: "0.73rem",
-    color: "#64748b",
-    lineHeight: 1.25,
+  mixRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(55px, auto) minmax(110px, 1fr) auto",
+    alignItems: "center",
+    gap: "0.35rem",
   } as const,
-  statValue: {
-    fontSize: "0.9rem",
-    color: "#0f172a",
-    fontVariantNumeric: "tabular-nums" as const,
-  } as const,
-  note: {
-    margin: "0.5rem 0 0",
-    fontSize: "0.72rem",
-    color: "#64748b",
-    lineHeight: 1.3,
-  } as const,
-  rawPre: {
-    margin: "0.45rem 0 0",
-    padding: "0.45rem",
-    border: "1px solid #e2e8f0",
-    borderRadius: "0.45rem",
-    background: "#f8fafc",
+  mixLabel: {
+    fontSize: "0.78rem",
     color: "#334155",
-    fontSize: "0.68rem",
-    whiteSpace: "pre-wrap" as const,
-    wordBreak: "break-word" as const,
-    maxHeight: "160px",
-    overflow: "auto",
+  } as const,
+  mixBarTrack: {
+    height: "0.34rem",
+    borderRadius: "9999px",
+    background: "#e5e7eb",
+    overflow: "hidden",
+  } as const,
+  mixPct: {
+    fontSize: "0.77rem",
+    color: "#334155",
+    fontWeight: 700,
+    fontVariantNumeric: "tabular-nums" as const,
   } as const,
 } as const;

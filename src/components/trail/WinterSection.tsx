@@ -43,18 +43,6 @@ function reasonsToBullets(reasons: string[] | string | null | undefined): string
   return [s];
 }
 
-function formatDate(ms: number | string | null | undefined): string {
-  if (ms == null) return "—";
-  const n = typeof ms === "string" ? Number(ms) : ms;
-  const d = new Date(n);
-  if (Number.isNaN(d.getTime())) return String(ms);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
 function hasPavedOrUrban(reasons: string[]): boolean {
   const text = reasons.join(" ").toLowerCase();
   return text.includes("paved") || text.includes("urban");
@@ -105,8 +93,8 @@ export function WinterSection({
   const bullets = reasonsToBullets(winterReasons);
   const showPavedChip = hasPavedOrUrban(bullets);
   const guidance = guidanceText(winterClass, winterLikelyMaintained);
-  const visibleReasons = bullets.slice(0, 3);
-  const moreCount = bullets.length - 3;
+  const visibleReasons = bullets.slice(0, 2);
+  const moreCount = bullets.length - 2;
 
   return (
     <section style={S.section}>
@@ -176,16 +164,16 @@ export function WinterSection({
 
       {visibleReasons.length > 0 ? (
         <div style={S.reasonsBlock}>
-          <ul style={S.bullets}>
+          <div style={S.reasonChips}>
             {visibleReasons.map((r, i) => (
-              <li key={i} style={S.bullet}>
+              <span key={i} style={S.reasonChip}>
                 {r}
-              </li>
+              </span>
             ))}
-          </ul>
+          </div>
           {moreCount > 0 ? (
             <details style={S.moreDetails}>
-              <summary style={S.detailsSummary}>Show all reasons (+{moreCount} more)</summary>
+              <summary style={S.detailsSummary}>Show all reasons (+{moreCount})</summary>
               <ul style={S.bullets}>
                 {bullets.map((r, i) => (
                   <li key={i} style={S.bullet}>
@@ -198,57 +186,16 @@ export function WinterSection({
         </div>
       ) : null}
 
-      <details style={S.dataDetails}>
-        <summary style={S.detailsSummary}>Data details</summary>
-        <div style={S.detailsInner}>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>winterClass</span>
-            <span style={S.detailVal}>{winterClass ?? "—"}</span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>winterScore (raw)</span>
-            <span style={S.detailVal}>
-              {winterScore != null && Number.isFinite(winterScore) ? String(winterScore) : "—"}
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>winterScore (pct)</span>
-            <span style={S.detailVal}>{pct}%</span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>winterLikelyMaintained</span>
-            <span style={S.detailVal}>
-              {winterLikelyMaintained === true ? "true" : winterLikelyMaintained === false ? "false" : "—"}
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>winterLastComputedAt</span>
-            <span style={S.detailVal}>
-              {winterLastComputedAt != null ? String(winterLastComputedAt) : "—"} ({formatDate(winterLastComputedAt)})
-            </span>
-          </div>
-          <div style={{ marginTop: "0.35rem" }}>
-            <span style={S.detailKey}>winterReasons</span>
-            {Array.isArray(winterReasons) ? (
-              <pre style={S.rawPre}>{JSON.stringify(winterReasons, null, 2)}</pre>
-            ) : winterReasons != null ? (
-              <span style={S.detailVal}>{String(winterReasons)}</span>
-            ) : (
-              <span style={S.detailVal}>—</span>
-            )}
-          </div>
-        </div>
-      </details>
     </section>
   );
 }
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
   } as const,
   headerRow: {
     display: "flex",
@@ -258,15 +205,15 @@ const S = {
   } as const,
   title: {
     margin: 0,
-    fontSize: "1.25rem",
+    fontSize: "1.1rem",
     fontWeight: 600,
     color: "#111827",
     display: "inline-flex",
     alignItems: "center",
   } as const,
-  subtitle: { margin: 0, fontSize: "0.85rem", color: "#6b7280" } as const,
+  subtitle: { margin: 0, fontSize: "0.78rem", color: "#6b7280" } as const,
   headlineRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.4rem",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -276,19 +223,19 @@ const S = {
   badge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "0.35rem 0.65rem",
+    padding: "0.25rem 0.55rem",
     borderRadius: "999px",
-    fontSize: "0.9rem",
+    fontSize: "0.82rem",
     fontWeight: 700,
   } as const,
   scorePill: {
-    fontSize: "0.95rem",
+    fontSize: "0.88rem",
     fontWeight: 700,
     color: "#111827",
     fontVariantNumeric: "tabular-nums" as const,
   } as const,
   gaugeRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.35rem",
     display: "flex",
     alignItems: "center",
     gap: "0.35rem",
@@ -302,7 +249,7 @@ const S = {
     marginLeft: "auto",
   } as const,
   barOuter: {
-    marginTop: "0.2rem",
+    marginTop: "0.15rem",
     height: "8px",
     width: "100%",
     borderRadius: "9999px",
@@ -310,7 +257,7 @@ const S = {
     background: "#e5e7eb",
   } as const,
   chipsRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.4rem",
@@ -322,13 +269,13 @@ const S = {
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
     background: "white",
-    padding: "0.3rem 0.55rem",
-    fontSize: "0.82rem",
+    padding: "0.22rem 0.45rem",
+    fontSize: "0.77rem",
     color: "#374151",
   } as const,
   guidance: {
-    marginTop: "0.5rem",
-    fontSize: "0.85rem",
+    marginTop: "0.35rem",
+    fontSize: "0.8rem",
     lineHeight: 1.45,
     color: "#374151",
     display: "-webkit-box",
@@ -336,41 +283,36 @@ const S = {
     WebkitBoxOrient: "vertical" as const,
     overflow: "hidden",
   } as const,
-  reasonsBlock: { marginTop: "0.5rem" } as const,
+  reasonsBlock: { marginTop: "0.35rem" } as const,
+  reasonChips: {
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: "0.3rem",
+  } as const,
+  reasonChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    border: "1px solid #e5e7eb",
+    borderRadius: "999px",
+    padding: "0.18rem 0.45rem",
+    fontSize: "0.75rem",
+    color: "#4b5563",
+    background: "#ffffff",
+    maxWidth: "100%",
+    whiteSpace: "nowrap" as const,
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  } as const,
   bullets: {
     margin: 0,
     paddingLeft: "1.25rem",
   } as const,
   bullet: { margin: "0.2rem 0", fontSize: "0.82rem", color: "#374151" } as const,
-  moreDetails: { marginTop: "0.25rem" } as const,
-  dataDetails: { marginTop: "0.6rem" } as const,
+  moreDetails: { marginTop: "0.2rem" } as const,
   detailsSummary: {
     cursor: "pointer",
-    fontSize: "0.82rem",
+    fontSize: "0.76rem",
     fontWeight: 600,
     color: "#374151",
-  } as const,
-  detailsInner: { marginTop: "0.5rem", paddingLeft: "0.25rem" } as const,
-  detailRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-    padding: "0.2rem 0",
-    fontSize: "0.8rem",
-    borderBottom: "1px solid #f1f5f9",
-  } as const,
-  detailKey: { color: "#6b7280", fontFamily: "monospace", fontSize: "0.78rem" } as const,
-  detailVal: { fontSize: "0.78rem", color: "#111827", wordBreak: "break-word" as const } as const,
-  rawPre: {
-    margin: "0.25rem 0 0",
-    fontSize: "0.72rem",
-    whiteSpace: "pre-wrap" as const,
-    wordBreak: "break-word" as const,
-    background: "#f8fafc",
-    padding: "0.35rem",
-    borderRadius: "0.35rem",
-    border: "1px solid #e5e7eb",
-    maxHeight: "8rem",
-    overflow: "auto",
   } as const,
 } as const;

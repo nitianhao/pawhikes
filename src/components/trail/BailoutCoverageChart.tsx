@@ -211,7 +211,7 @@ export function BailoutCoverageChart({ points, totalMiles }: Props) {
                         fill="white" stroke={color} strokeWidth="1.5" />
                     )}
 
-                    <title>{spot.title} · {nearestD}</title>
+                    <title>{`${spot.title} · ${nearestD}`}</title>
                   </g>
                 );
               })}

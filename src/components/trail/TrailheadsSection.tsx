@@ -1,6 +1,10 @@
 "use client";
 
+import { useState } from "react";
+import Image from "next/image";
 import type { TrailHeadRow, TrailSystemForPage } from "@/lib/data/trailSystem";
+import { stripCountrySuffix, formatHoursCompact } from "@/lib/trails/displayFormatters";
+import { trailheadImageAlt } from "@/lib/seo/media";
 
 // ─── Formatters (human-friendly, no raw JSON) ─────────────────────────────────
 function formatMeters(m: number | null | undefined): string {
@@ -143,9 +147,15 @@ function matchesSystem(head: TrailHeadRow, system: TrailSystemForPage | null): b
 function TrailheadCard({
   head,
   isPrimary,
+  trailContext,
 }: {
   head: TrailHeadRow;
   isPrimary: boolean;
+  trailContext?: {
+    trailName?: string | null;
+    cityName?: string | null;
+    stateName?: string | null;
+  };
 }) {
   const raw = head.raw && typeof head.raw === "object" ? (head.raw as Record<string, unknown>) : {};
   const distanceMeters =
@@ -165,14 +175,14 @@ function TrailheadCard({
   const distanceChip = formatDistanceChip(distanceMeters);
   const parkingLabel =
     capacity == null
-      ? "Unknown capacity"
+      ? null
       : capacity === 0
         ? "Street parking likely"
         : capacity <= 10
-          ? "Small"
+          ? "Small lot"
           : capacity <= 40
-            ? "Medium"
-            : "Large";
+            ? "Medium lot"
+            : "Large lot";
   const ratingStr =
     head.googleRating != null && Number.isFinite(head.googleRating)
       ? head.googleRating.toFixed(1)
@@ -183,7 +193,7 @@ function TrailheadCard({
       : "";
   const title = head.name && String(head.name).trim() ? head.name : "Trailhead";
   const subtitle = head.googleCanonicalName && String(head.googleCanonicalName).trim() && head.googleCanonicalName !== title ? head.googleCanonicalName : null;
-  const address = head.googleAddress && String(head.googleAddress).trim() ? head.googleAddress : null;
+  const address = stripCountrySuffix(head.googleAddress);
   const coordsStr =
     head.lat != null && head.lon != null
       ? `${head.lat}, ${head.lon}`
@@ -200,6 +210,12 @@ function TrailheadCard({
 
   const cardStyle = isPrimary ? { ...CARD_STYLE, ...PRIMARY_CARD_STYLE } : CARD_STYLE;
   const photoUri = head.googlePhotoUri && String(head.googlePhotoUri).trim() !== "" ? head.googlePhotoUri : null;
+  const photoAlt = trailheadImageAlt({
+    trailheadName: title,
+    trailName: trailContext?.trailName,
+    cityName: trailContext?.cityName ?? address,
+    stateName: trailContext?.stateName,
+  });
 
   return (
     <div style={cardStyle}>
@@ -216,12 +232,12 @@ function TrailheadCard({
               backgroundColor: "#e5e7eb",
             }}
           >
-            <img
+            <Image
               src={photoUri}
-              alt=""
+              alt={photoAlt}
               width={120}
               height={90}
-              loading={isPrimary ? "eager" : "lazy"}
+              sizes="120px"
               style={{
                 width: "100%",
                 height: "100%",
@@ -259,11 +275,12 @@ function TrailheadCard({
           )}
           {(() => {
             const hours = head.headHoursText;
-            const hoursLines = Array.isArray(hours)
+            const rawLines = Array.isArray(hours)
               ? hours.filter((line): line is string => typeof line === "string" && line.trim() !== "")
               : typeof hours === "string" && hours.trim() !== ""
                 ? [hours.trim()]
                 : [];
+            const hoursLines = formatHoursCompact(rawLines);
             if (hoursLines.length === 0) return null;
             return (
               <div style={{ marginTop: "0.35rem", fontSize: "0.8125rem", color: "#475569", lineHeight: 1.35 }}>
@@ -300,7 +317,9 @@ function TrailheadCard({
             >
               📍 {distanceChip.label}
             </span>
-            <span style={{ ...BADGE_STYLE, background: "#f1f5f9", color: "#475569" }}>🅿 {parkingLabel}</span>
+            {parkingLabel && (
+              <span style={{ ...BADGE_STYLE, background: "#f1f5f9", color: "#475569" }}>🅿 {parkingLabel}</span>
+            )}
             {(head.googleRating != null || head.googleReviewCount != null) && (
               <span style={{ ...BADGE_STYLE, background: "#f1f5f9", color: "#475569" }}>★ {ratingStr}{reviewStr}</span>
             )}
@@ -389,6 +408,15 @@ export function TrailheadsSection({ system, trailHeads = [] }: TrailheadsSection
   const list = Array.isArray(trailHeads) ? trailHeads : [];
   const matched = system ? list.filter((th) => matchesSystem(th, system)) : [];
   const { primary, others } = selectPrimaryAndOthers(matched);
+  const [showAllTrailheads, setShowAllTrailheads] = useState(false);
+  const trailContext = {
+    trailName: typeof system?.name === "string" ? system.name : null,
+    cityName: typeof system?.city === "string" ? system.city : null,
+    stateName: typeof system?.state === "string" ? system.state : null,
+  };
+  const initialOtherCount = primary ? 2 : 3; // show 3 total when primary exists
+  const visibleOthers = showAllTrailheads ? others : others.slice(0, initialOtherCount);
+  const hiddenOthersCount = Math.max(0, others.length - visibleOthers.length);
 
   return (
     <section style={SECTION_STYLE}>
@@ -399,11 +427,6 @@ export function TrailheadsSection({ system, trailHeads = [] }: TrailheadsSection
               ? "No trailheads mapped yet."
               : "No trailheads linked to this system."}
           </p>
-          {list.length > 0 && (
-            <p style={{ marginTop: "0.35rem", fontSize: "0.8rem", color: "#9ca3af" }}>
-              Debug: {list.length} trailhead{list.length === 1 ? "" : "s"} in DB; none match this system (systemRef/extSystemRef or slug/trailSlug).
-            </p>
-          )}
         </div>
       ) : (
         <>
@@ -413,7 +436,7 @@ export function TrailheadsSection({ system, trailHeads = [] }: TrailheadsSection
               <h3 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1rem", fontWeight: 600, color: "#374151" }}>
                 Primary trailhead
               </h3>
-              <TrailheadCard head={primary} isPrimary />
+              <TrailheadCard head={primary} isPrimary trailContext={trailContext} />
             </>
           )}
 
@@ -424,10 +447,39 @@ export function TrailheadsSection({ system, trailHeads = [] }: TrailheadsSection
                 Other access points
               </h3>
               <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-                {others.map((head) => (
-                  <TrailheadCard key={head.id} head={head} isPrimary={false} />
+                {visibleOthers.map((head) => (
+                  <TrailheadCard key={head.id} head={head} isPrimary={false} trailContext={trailContext} />
                 ))}
               </div>
+              {others.length > initialOtherCount && (
+                <div style={{ marginTop: "0.8rem", display: "flex", justifyContent: "center" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAllTrailheads((prev) => !prev)}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "0.4rem",
+                      minWidth: "220px",
+                      padding: "0.5rem 1rem",
+                      fontSize: "0.84rem",
+                      fontWeight: 600,
+                      letterSpacing: "0.01em",
+                      color: "#0f5132",
+                      background: "linear-gradient(180deg, #ecfdf5 0%, #dcfce7 100%)",
+                      border: "1px solid #86efac",
+                      borderRadius: "9999px",
+                      boxShadow: "0 2px 8px rgba(16, 185, 129, 0.15)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showAllTrailheads
+                      ? "Show fewer trailheads"
+                      : `Show ${hiddenOthersCount} more trailhead${hiddenOthersCount === 1 ? "" : "s"}`}
+                  </button>
+                </div>
+              )}
             </>
           )}
         </>

@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 const baseStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "1fr",
-  gap: "2rem",
+  gap: "3rem",
   marginTop: "1rem",
 };
 

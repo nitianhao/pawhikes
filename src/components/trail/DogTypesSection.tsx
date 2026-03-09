@@ -610,134 +610,65 @@ function computeDogProfiles(s: TrailSystemForPage | null): DogProfile[] {
 // Rendering helpers
 // ---------------------------------------------------------------------------
 
-const SIGNAL_STYLE: Record<Status, { bg: string; text: string; symbol: string }> = {
-  good: { bg: "#dcfce7", text: "#15803d", symbol: "✓" },
-  warn: { bg: "#fef9c3", text: "#a16207", symbol: "~" },
-  bad:  { bg: "#fee2e2", text: "#dc2626", symbol: "✗" },
+const SIGNAL_COLOR: Record<Status, string> = {
+  good: "#2c5f28",
+  warn: "#a09880",
+  bad:  "#8b4a3a",
 };
 
-/** Paw-print data URI — matches DogScoreBar visual identity */
-const PAW_DATA_URI = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cellipse cx='6.5' cy='3.5' rx='1.8' ry='2.2' fill='rgba(255,255,255,0.28)'/%3E%3Cellipse cx='11' cy='2.3' rx='1.8' ry='2.2' fill='rgba(255,255,255,0.28)'/%3E%3Cellipse cx='15.5' cy='3.5' rx='1.8' ry='2.2' fill='rgba(255,255,255,0.28)'/%3E%3Cellipse cx='19' cy='7' rx='1.8' ry='2.2' fill='rgba(255,255,255,0.28)'/%3E%3Cpath d='M12 8c-3.5 0-7 2.5-7 6.5 0 2.5 1.5 5 4 5.5.8.2 2 .5 3 .5s2.2-.3 3-.5c2.5-.5 4-3 4-5.5C19 10.5 15.5 8 12 8z' fill='rgba(255,255,255,0.28)'/%3E%3C/svg%3E")`;
-
-type Tier = {
-  headerBg: string;
-  border: string;
-  iconBg: string;
-  iconColor: string;
-  nameColor: string;
-  descColor: string;
-  scoreColor: string;
-  barColor: string;
-  verdict: string;
+const SIGNAL_SYMBOL: Record<Status, string> = {
+  good: "✓",
+  warn: "–",
+  bad:  "×",
 };
 
-function scoreTier(score: number): Tier {
-  if (score >= 65) return {
-    headerBg: "#f0fdf4",   // green-50
-    border: "#bbf7d0",     // green-200
-    iconBg: "#dcfce7",     // green-100
-    iconColor: "#15803d",  // green-700
-    nameColor: "#14532d",  // green-900
-    descColor: "#16a34a",  // green-600
-    scoreColor: "#15803d", // green-700
-    barColor: "#16a34a",
-    verdict: score >= 80 ? "Great fit" : "Good fit",
-  };
-  if (score >= 42) return {
-    headerBg: "#fffbeb",   // amber-50
-    border: "#fde68a",     // amber-200
-    iconBg: "#fef3c7",     // amber-100
-    iconColor: "#b45309",  // amber-700
-    nameColor: "#451a03",  // amber-950
-    descColor: "#92400e",  // amber-800
-    scoreColor: "#b45309", // amber-700
-    barColor: "#d97706",
-    verdict: score >= 55 ? "Fair fit" : "Caution",
-  };
-  return {
-    headerBg: "#fff1f2",   // rose-50
-    border: "#fecdd3",     // rose-200
-    iconBg: "#fee2e2",     // red-100
-    iconColor: "#b91c1c",  // red-700
-    nameColor: "#450a0a",  // red-950
-    descColor: "#b91c1c",  // red-700
-    scoreColor: "#b91c1c",
-    barColor: "#dc2626",
-    verdict: score >= 25 ? "Tough" : "Not ideal",
-  };
+function verdictLabel(score: number): string {
+  if (score >= 80) return "Great fit";
+  if (score >= 65) return "Good fit";
+  if (score >= 55) return "Fair fit";
+  if (score >= 42) return "Caution";
+  if (score >= 25) return "Tough";
+  return "Not ideal";
+}
+
+function scoreBarColor(score: number): string {
+  if (score >= 70) return "#2f7d4b"; // green
+  if (score >= 45) return "#d97706"; // orange
+  return "#dc2626"; // red
 }
 
 function DogTypeCard({ name, emoji, description, score, signals, hasData }: DogProfile) {
-  const tier = scoreTier(score);
-
   return (
     <div style={{
-      border: `1px solid ${tier.border}`,
+      border: "1px solid #e5e0d8",
       borderRadius: "0.875rem",
       overflow: "hidden",
       backgroundColor: "#fff",
     }}>
-      {/* ── Colored header band ── */}
+      {/* ── Header row ── */}
       <div style={{
-        backgroundColor: tier.headerBg,
         padding: "0.75rem 0.875rem",
         display: "flex",
         alignItems: "center",
         gap: "0.625rem",
+        borderBottom: "1px solid #f0ece6",
       }}>
-        {/* Circular emoji badge */}
-        <div style={{
-          width: "2.25rem",
-          height: "2.25rem",
-          borderRadius: "50%",
-          backgroundColor: tier.iconBg,
-          border: `1.5px solid ${tier.border}`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "1.05rem",
-          flexShrink: 0,
-        }} aria-hidden>
-          {emoji}
-        </div>
-
-        {/* Name + description */}
+        <span style={{ fontSize: "1.25rem", flexShrink: 0, lineHeight: 1 }} aria-hidden>{emoji}</span>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontWeight: 700,
-            fontSize: "0.9rem",
-            color: tier.nameColor,
-            lineHeight: 1.2,
-          }}>
+          <div style={{ fontWeight: 700, fontSize: "0.875rem", color: "#1c1a17", lineHeight: 1.2 }}>
             {name}
           </div>
-          <div style={{ fontSize: "0.6875rem", color: tier.descColor, marginTop: "0.1rem", lineHeight: 1.3 }}>
+          <div style={{ fontSize: "0.6875rem", color: "#a09880", marginTop: "0.1rem", lineHeight: 1.3 }}>
             {description}
           </div>
         </div>
-
-        {/* Score + verdict — right-aligned in header */}
         {hasData && (
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{
-              fontSize: "1.375rem",
-              fontWeight: 800,
-              color: tier.scoreColor,
-              lineHeight: 1,
-              letterSpacing: "-0.02em",
-            }}>
+            <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#1c1a17", lineHeight: 1, letterSpacing: "-0.02em" }}>
               {score}%
             </div>
-            <div style={{
-              fontSize: "0.6rem",
-              color: tier.scoreColor,
-              fontWeight: 700,
-              marginTop: "0.1rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              opacity: 0.8,
-            }}>
-              {tier.verdict}
+            <div style={{ fontSize: "0.5625rem", color: "#a09880", fontWeight: 700, marginTop: "0.15rem", textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>
+              {verdictLabel(score)}
             </div>
           </div>
         )}
@@ -745,12 +676,11 @@ function DogTypeCard({ name, emoji, description, score, signals, hasData }: DogP
 
       {/* ── Card body ── */}
       <div style={{ padding: "0.625rem 0.875rem 0.75rem" }}>
-        {/* Score bar */}
         {hasData && (
           <div style={{
-            height: "0.5rem",
+            height: "3px",
             borderRadius: "9999px",
-            backgroundColor: "#e5e7eb",
+            backgroundColor: "#f0ece6",
             overflow: "hidden",
             marginBottom: "0.625rem",
           }}>
@@ -758,47 +688,34 @@ function DogTypeCard({ name, emoji, description, score, signals, hasData }: DogP
               height: "100%",
               width: `${score}%`,
               borderRadius: "9999px",
-              backgroundColor: tier.barColor,
-              backgroundImage: PAW_DATA_URI,
-              backgroundRepeat: "repeat-x",
-              backgroundSize: "12px 12px",
-              backgroundPosition: "center",
+              backgroundColor: scoreBarColor(score),
             }} />
           </div>
         )}
 
-        {/* Factor signals — note-only, no category prefix */}
         {signals.length > 0 && (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-            {signals.map((sig, i) => {
-              const { bg, text, symbol } = SIGNAL_STYLE[sig.status];
-              return (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", fontSize: "0.78rem" }}>
-                  <span style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: "1.1rem",
-                    height: "1.1rem",
-                    borderRadius: "9999px",
-                    backgroundColor: bg,
-                    color: text,
-                    fontWeight: 800,
-                    fontSize: "0.6rem",
-                    flexShrink: 0,
-                    marginTop: "0.1rem",
-                  }} aria-hidden>
-                    {symbol}
-                  </span>
-                  <span style={{ color: "#374151", lineHeight: 1.45 }}>{sig.note}</span>
-                </div>
-              );
-            })}
+            {signals.map((sig, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "0.4rem", fontSize: "0.78rem" }}>
+                <span style={{
+                  color: SIGNAL_COLOR[sig.status],
+                  fontWeight: 700,
+                  fontSize: "0.75rem",
+                  flexShrink: 0,
+                  lineHeight: 1.5,
+                  width: "0.75rem",
+                  textAlign: "center",
+                }} aria-hidden>
+                  {SIGNAL_SYMBOL[sig.status]}
+                </span>
+                <span style={{ color: "#3d3730", lineHeight: 1.45 }}>{sig.note}</span>
+              </div>
+            ))}
           </div>
         )}
 
         {!hasData && (
-          <p style={{ fontSize: "0.73rem", color: "#94a3b8", margin: 0 }}>No trail data available</p>
+          <p style={{ fontSize: "0.73rem", color: "#a09880", margin: 0 }}>No trail data available</p>
         )}
       </div>
     </div>
@@ -827,7 +744,6 @@ export function DogTypesSection({ system }: { system: TrailSystemForPage | null 
         className="dog-types-grid"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
           gap: "0.75rem",
         }}
       >

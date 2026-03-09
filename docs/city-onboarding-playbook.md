@@ -1136,7 +1136,12 @@ All scripts share this filtering behavior:
 - `--city`: substring match on `system.city`, case-insensitive, **required**
 - `--state`: substring match on `system.state`, case-insensitive, **lenient** (systems without `state` field pass through)
 - `--limit`: slice first N systems after filtering
+- `--min-length`: skip systems with `lengthMilesTotal` below this threshold (default: no filter)
 - City/state filtering happens client-side after fetching all systems from DB
+
+> **Always pass `--min-length 1`** for all enrichment runs. The site only renders trail pages for systems with `lengthMilesTotal > 1`. Sub-1-mile systems are never displayed, so enriching them wastes Overpass API quota. Houston had 92 total systems after ingest but only 60 were ≥1 mile — 32 systems (35%) would have been enriched for nothing without this flag.
+>
+> Example: `--min-length 1` is appended to every command in this section.
 
 ---
 
@@ -1164,6 +1169,7 @@ npx tsx scripts/enrich-city.ts \
   --city "Denver" \
   --state "CO" \
   --modules "elevation,hazards,route_structure,access_rules" \
+  --min-length 1 \
   --dry-run false
 ```
 
@@ -1175,6 +1181,7 @@ npx tsx scripts/enrich-city.ts \
 | `--dry-run` | string | `true` | Pass `false` to write. Also accepts `--dry false`. Does NOT accept `--write`. |
 | `--slug` | string | (all) | Exact slug match. Process a single system only. Useful for spot-checking one system. |
 | `--limit` | number | (all) | Max systems to process. |
+| `--min-length` | number | (none) | Skip systems where `lengthMilesTotal` is below this value. Recommended: `1`. |
 
 **Fields written per module:**
 
@@ -1217,11 +1224,11 @@ Queries Overpass for walkable OSM ways, intersects with trail geometry, computes
 ```bash
 # Dry run:
 npx tsx scripts/enrich-systems-surface.ts \
-  --city "Denver" --state "CO"
+  --city "Denver" --state "CO" --min-length 1
 
 # Write:
 npx tsx scripts/enrich-systems-surface.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   --write
 ```
 
@@ -1235,7 +1242,7 @@ Queries Overpass for tree/forest/park polygons. Samples points along trail geome
 
 ```bash
 npx tsx scripts/enrich-systems-shade.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   [--sampleMeters 50] [--nearMeters 25] \
   --write
 ```
@@ -1252,7 +1259,7 @@ Two Overpass queries: water bodies (lakes, rivers, streams) + access candidates 
 
 ```bash
 npx tsx scripts/enrich-systems-water.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   --write
 ```
 
@@ -1266,7 +1273,7 @@ Gathers crowd signals: parking capacity, amenity density, transit access, urban 
 
 ```bash
 npx tsx scripts/enrich-systems-crowd.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   [--anchorRadius 400] [--amenityRadius 250] [--parkingRadius 500] \
   --write
 ```
@@ -1283,7 +1290,7 @@ Overpass query for viewpoints, waterfalls, peaks, art, historic features within 
 
 ```bash
 npx tsx scripts/enrich-systems-highlights.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   [--nearMeters 150] \
   --write
 ```
@@ -1300,7 +1307,7 @@ Three Overpass queries around anchor points (start, end, centroid of system geom
 
 ```bash
 npx tsx scripts/enrich-systems-logistics.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   [--parkingRadius 500] [--amenityRadius 250] \
   --write
 ```
@@ -1319,7 +1326,7 @@ Same OSM surface way query as surface enrichment. Classifies surfaces into HARD/
 
 ```bash
 npx tsx scripts/enrich-systems-mud.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   --write
 ```
 
@@ -1333,7 +1340,7 @@ Two Overpass queries: lit walkable ways + street lamp nodes. Computes lit covera
 
 ```bash
 npx tsx scripts/enrich-systems-night-winter.ts \
-  --city "Denver" --state "CO" \
+  --city "Denver" --state "CO" --min-length 1 \
   [--sampleMeters 50] [--nearMeters 30] \
   --write
 ```
@@ -1358,10 +1365,11 @@ npx tsx scripts/enrich-systems-personalization.ts \
 # Write — MUST use --dry false:
 npx tsx scripts/enrich-systems-personalization.ts \
   --city "Denver" --state "CO" \
+  --min-length 1 \
   --dry false
 ```
 
-Flags: `--dry` (`true`|`false`, default `true`), `--modules` (`personalization,safety`, default `personalization`), `--slug` (single system), `--batchSize` (default 50), `--radiusMeters` (default 10000)
+Flags: `--dry` (`true`|`false`, default `true`), `--modules` (`personalization,safety`, default `personalization`), `--slug` (single system), `--batchSize` (default 50), `--radiusMeters` (default 10000), `--min-length` (number, skip systems below this `lengthMilesTotal`)
 
 Fields: `personalization` (JSON), `personalizationLastComputedAt`, `safety` (JSON), `safetyLastComputedAt`
 
@@ -1382,6 +1390,21 @@ The `enrich-city.ts` modules (elevation, hazards, route_structure, access_rules)
 Dog policy data is **manually curated**. There is no automated scraper. Data lives in `scripts/policy/policy-seeds.ts` and is versioned in git.
 
 **Default mode: DRY RUN.** Writes require `--commit`.
+
+### Coverage rule — every system needs a seed
+
+**You must add a seed for every displayed system.** Trail cards show no leash/dogs chips at all when a system has no seed — they look broken to users.
+
+Houston had 60 displayed systems but only 18 seeds initially — 42 trails had blank policy chips. The fix: add baseline seeds for all remaining systems using the city's general ordinance (e.g. "Leash required per Houston City Ordinance Chapter 6", confidence 0.72).
+
+**Workflow:**
+1. Run dry-run and check `NO_MAPPING` count in the summary
+2. If `NO_MAPPING > 0`, add seeds for those slugs before committing
+3. Only run `--commit` once `NO_MAPPING: 0`
+
+For systems you haven't individually researched, use the city's baseline ordinance with `policyConfidence: 0.72` (just above the 0.7 gate). This is better than blank chips.
+
+**Slug key must match the DB slug exactly.** The DB slug is `slugify(system_name)` — check it in the rollup output or run the dry-run first to see what slugs the script is seeing. A common mistake: seeding `"bay-area-hike-and-bike-trail"` when the DB has `"bay-area-hike-bike-trail"` (different slugify result). The dry-run's report table shows the exact DB slug in the first column — use that.
 
 ### Add policies to `policy-seeds.ts`
 
@@ -1417,7 +1440,7 @@ Examples:
 - `"Bear Creek/Ute Valley Trail"` → `bear-creek-ute-valley-trail`
 - `"5280 Trail"` → `5280-trail`
 
-### Run dry-run first
+### Run dry-run first and check NO_MAPPING
 
 ```bash
 # Dry run showing the full report table:
@@ -1426,17 +1449,31 @@ npx tsx scripts/policy/seed-policy-austin.ts \
   --state "CO"
 ```
 
+The summary at the end shows counts per action. **`NO_MAPPING` must be 0 before you commit.**
+
+```
+SUMMARY
+  totalSystems      : 60
+  WOULD_UPDATE      : 60   ← good — all systems have seeds
+  SKIP_NO_CHANGE    : 0
+  NO_MAPPING        : 0    ← must be 0
+  INVALID           : 0
+  LOW_CONFIDENCE_SKIP: 0
+```
+
+If `NO_MAPPING > 0`: look at the report table to find the unmapped slugs (first column). Add seeds for those slugs to `policy-seeds.ts`, then re-run the dry-run to confirm `NO_MAPPING: 0`.
+
 Report columns: `slug | name | dogsAllowed | leashPolicy | conf | sourceUrl | action`
 
 Action values:
 - `WOULD_UPDATE` — will be written on `--commit`
 - `SKIP_NO_CHANGE` — already up to date
 - `SKIP_SLUG` — in the skip list
-- `NO_MAPPING` — no entry in `POLICY_SEEDS` for this slug
+- `NO_MAPPING` — **no entry in `POLICY_SEEDS` for this slug — add one before committing**
 - `INVALID` — fails validation (missing required fields)
 - `LOW_CONFIDENCE_SKIP` — confidence below threshold
 
-### Commit
+### Commit (only after NO_MAPPING: 0)
 
 ```bash
 npx tsx scripts/policy/seed-policy-austin.ts \
@@ -1558,25 +1595,31 @@ NOTE: Requires trailHeads with googlePlaceId (from Phase 5 or 6). Writes googleP
 
 PHASE 7 — SYSTEM ENRICHMENT
 (Run logistics before crowd. All others are independent.)
+NOTE: Always pass --min-length 1. The site only renders systems with lengthMilesTotal > 1.
+      Enriching sub-1-mile systems wastes Overpass quota — they are never displayed.
 
-[ ] npx tsx scripts/enrich-systems-logistics.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-crowd.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-surface.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-shade.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-water.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-highlights.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-mud.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-systems-night-winter.ts --city "Denver" --state "CO" --write
-[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules elevation --dry-run false
-[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules hazards --dry-run false
-[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules route_structure --dry-run false
-[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules access_rules --dry-run false
-[ ] npx tsx scripts/enrich-systems-personalization.ts --city "Denver" --state "CO" --dry false
+[ ] npx tsx scripts/enrich-systems-logistics.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-crowd.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-surface.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-shade.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-water.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-highlights.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-mud.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-systems-night-winter.ts --city "Denver" --state "CO" --min-length 1 --write
+[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules elevation --min-length 1 --dry-run false
+[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules hazards --min-length 1 --dry-run false
+[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules route_structure --min-length 1 --dry-run false
+[ ] npx tsx scripts/enrich-city.ts --city "Denver" --state "CO" --modules access_rules --min-length 1 --dry-run false
+[ ] npx tsx scripts/enrich-systems-personalization.ts --city "Denver" --state "CO" --min-length 1 --dry false
 
 PHASE 8 — DOG POLICY
-[ ] Add entries to scripts/policy/policy-seeds.ts for each system slug
 [ ] npx tsx scripts/policy/seed-policy-austin.ts --city "Denver" --state "CO"
-    (dry run — review WOULD_UPDATE vs NO_MAPPING counts)
+    (dry run — check summary at bottom)
+    Expected: NO_MAPPING: 0  ← MUST be 0 before committing
+    If NO_MAPPING > 0: add seeds for those slugs to policy-seeds.ts, then re-run dry-run
+    NOTE: Every displayed system needs a seed. Use city baseline ordinance at confidence 0.72
+          for systems you haven't individually researched. Blank chips look broken to users.
+          The report table's first column shows the exact DB slug — use that as the key.
 [ ] npx tsx scripts/policy/seed-policy-austin.ts --city "Denver" --state "CO" --commit
     Expected: "Done." with N systems written
 ```
@@ -1696,6 +1739,30 @@ if (!system.state) return true; // keep system even if --state was specified
 ```
 
 This is intentional for the Austin dataset where `state` was not written during ingest. For new cities where you write `state` explicitly, the filter works strictly. The leniency means passing `--state "TX"` will still process systems with no state field set.
+
+### Numeric enrichment fields are stored as fractions (0.0–1.0), not percentages
+
+Several `trailSystems` fields store a ratio in the range 0.0–1.0, **not** a 0–100 integer:
+
+| Field | Range | Meaning |
+|---|---|---|
+| `shadeProxyPercent` | 0.0–1.0 | fraction of trail with medium-or-strong shade |
+| `shadeProxyScore` | 0.0–1.0 | average shade weight (includes weak shade) |
+| `waterNearPercent` | 0.0–1.0 | fraction of trail within 200 m of water |
+| `asphaltPercent` | 0.0–1.0 | fraction of trail on asphalt |
+| `naturalSurfacePercent` | 0.0–1.0 | fraction of trail on natural surface |
+
+**When displaying these as a percentage, multiply by 100:**
+
+```tsx
+// WRONG — shadeProxyPercent = 0.65 → displays "1%" (rounds 0.65 → 1):
+`${trail.shadeProxyPercent.toFixed(0)}%`
+
+// CORRECT — displays "65%":
+`${(trail.shadeProxyPercent * 100).toFixed(0)}%`
+```
+
+This caused Houston trails to show "0% shade" and "1% shade" when the actual values were 28–100%. The enrichment scripts write the correct fractions; the bug was only in the display layer (`src/app/(site)/[state]/[city]/page.tsx`).
 
 ### Geometry must be GeoJSON in `[lon, lat]` order
 

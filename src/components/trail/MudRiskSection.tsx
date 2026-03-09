@@ -201,14 +201,6 @@ function buildMudRiskModel(props: MudRiskSectionProps): MudRiskModel {
   };
 }
 
-function renderDetailValue(v: unknown): string {
-  if (v == null) return "—";
-  if (typeof v === "string") return v.trim() || "—";
-  if (typeof v === "number" || typeof v === "boolean") return String(v);
-  if (Array.isArray(v)) return v.map((x) => String(x)).join(", ") || "—";
-  return JSON.stringify(v);
-}
-
 function DriverIcon({ driver }: { driver: MudRiskDriver }) {
   if (driver.icon === "rain") return <CloudRain size={12} style={{ flexShrink: 0, color: "#78716c" }} />;
   if (driver.icon === "waves") return <Waves size={12} style={{ flexShrink: 0, color: "#0ea5e9" }} />;
@@ -236,10 +228,6 @@ export function MudRiskSection(props: MudRiskSectionProps) {
         <p style={S.percentText}>{model.percent != null ? `${model.percent}%` : "—"}</p>
       </div>
 
-      <div style={S.gaugeRow}>
-        <span style={S.gaugeMuted}>Risk</span>
-        <span style={S.gaugeMuted}>{isUnknown ? "Unknown" : model.status.charAt(0).toUpperCase() + model.status.slice(1)}</span>
-      </div>
       <div style={S.barOuter} title={isUnknown ? "Mud risk unknown" : `Risk: ${displayPercent}%`}>
         <div
           style={{
@@ -281,46 +269,16 @@ export function MudRiskSection(props: MudRiskSectionProps) {
         </p>
       ) : null}
 
-      <details style={S.details}>
-        <summary style={S.summaryRow}>
-          <span>Data details</span>
-          <span style={{ fontSize: "0.7rem", color: "#94a3b8" }}>▼</span>
-        </summary>
-        <div style={S.detailsList}>
-          {([
-            ["mudRisk", props.mudRisk],
-            ["mudRiskScore", props.mudRiskScore],
-            ["mudRiskReason", props.mudRiskReason],
-            ["mudRiskKnownSamples", props.mudRiskKnownSamples],
-            ["mudRiskReasons", props.mudRiskReasons],
-            ["waterNearPercent", props.waterNearPercent],
-            ["percent (computed)", model.percent],
-          ] as [string, unknown][]).map(([label, value]) => (
-            <div key={label} style={S.detailRow}>
-              <span>{label}</span>
-              <span style={S.detailVal}>{renderDetailValue(value)}</span>
-            </div>
-          ))}
-          {props.mudLastComputedAt != null ? (
-            <div style={S.detailRow}>
-              <span>Updated</span>
-              <span style={S.detailVal}>
-                {new Date(Number(props.mudLastComputedAt)).toLocaleString()}
-              </span>
-            </div>
-          ) : null}
-        </div>
-      </details>
     </section>
   );
 }
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
   } as const,
   headerRow: {
     display: "flex",
@@ -328,10 +286,10 @@ const S = {
     justifyContent: "space-between",
     gap: "0.75rem",
   } as const,
-  title: { margin: 0, fontSize: "1.25rem", fontWeight: 600, color: "#111827" } as const,
-  subtitle: { margin: 0, fontSize: "0.85rem", color: "#6b7280" } as const,
+  title: { margin: 0, fontSize: "1.1rem", fontWeight: 600, color: "#111827" } as const,
+  subtitle: { margin: 0, fontSize: "0.78rem", color: "#6b7280" } as const,
   statusRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.4rem",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -347,27 +305,19 @@ const S = {
     margin: 0,
     color: "#111827",
     fontWeight: 700,
-    fontSize: "1.05rem",
+    fontSize: "0.97rem",
     lineHeight: 1.2,
   } as const,
   percentText: {
     margin: 0,
     color: "#111827",
     fontWeight: 700,
-    fontSize: "1rem",
+    fontSize: "0.92rem",
     fontVariantNumeric: "tabular-nums" as const,
     flexShrink: 0,
   } as const,
-  gaugeRow: {
-    marginTop: "0.45rem",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "0.5rem",
-  } as const,
-  gaugeMuted: { fontSize: "0.75rem", color: "#6b7280" } as const,
   barOuter: {
-    marginTop: "0.2rem",
+    marginTop: "0.3rem",
     height: "8px",
     width: "100%",
     borderRadius: "9999px",
@@ -380,7 +330,7 @@ const S = {
     transition: "width 0.2s",
   } as const,
   chipsRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.35rem",
@@ -398,8 +348,8 @@ const S = {
   } as const,
   chipText: { whiteSpace: "nowrap" as const } as const,
   summaryText: {
-    margin: "0.5rem 0 0",
-    fontSize: "0.85rem",
+    margin: "0.35rem 0 0",
+    fontSize: "0.82rem",
     lineHeight: 1.45,
     color: "#374151",
     display: "-webkit-box",
@@ -408,7 +358,7 @@ const S = {
     overflow: "hidden",
   } as const,
   pillsRow: {
-    marginTop: "0.45rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.35rem",
@@ -429,36 +379,5 @@ const S = {
     margin: "0.35rem 0 0",
     fontSize: "0.8rem",
     color: "#6b7280",
-  } as const,
-  details: {
-    marginTop: "0.55rem",
-    border: "1px solid #e5e7eb",
-    borderRadius: "0.5rem",
-    background: "white",
-    padding: "0.4rem 0.6rem",
-  } as const,
-  summaryRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    cursor: "pointer",
-    fontSize: "0.82rem",
-    fontWeight: 500,
-    color: "#374151",
-  } as const,
-  detailsList: { marginTop: "0.35rem" } as const,
-  detailRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "0.15rem 0",
-    borderBottom: "1px solid #f1f5f9",
-    fontSize: "0.8rem",
-    color: "#374151",
-  } as const,
-  detailVal: {
-    fontWeight: 600,
-    fontVariantNumeric: "tabular-nums" as const,
-    color: "#111827",
   } as const,
 } as const;

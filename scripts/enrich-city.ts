@@ -246,6 +246,7 @@ async function main(): Promise<void> {
   const slugFilter = typeof args.slug === "string" ? args.slug : undefined;
   const modules = parseModules(args.modules);
   const limitArg = typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
+  const minLength = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
 
   const dryRunExplicit = args["dry-run"] ?? args.dry;
   const dryRun = parseBool(dryRunExplicit, true);
@@ -308,6 +309,11 @@ async function main(): Promise<void> {
     const stateNeedle = stateFilter.toLowerCase();
     systems = systems.filter((s) => String(s.state ?? "").toLowerCase().includes(stateNeedle));
     console.log(`  After state=\"${stateFilter}\": ${systems.length}`);
+  }
+
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) >= minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
   }
 
   if (slugFilter) {

@@ -1,4 +1,10 @@
-import { AmenityProfileChart, type AmenityPoint } from "./AmenityProfileChart";
+import dynamic from "next/dynamic";
+import type { AmenityPoint } from "./AmenityProfileChart";
+
+// Interactive chart with keyboard navigation — code-split into its own chunk.
+const AmenityProfileChart = dynamic(
+  () => import("./AmenityProfileChart").then((m) => ({ default: m.AmenityProfileChart }))
+);
 
 type PoiLike = {
   kind?: string;
@@ -32,7 +38,7 @@ const CATEGORY_ICON: Record<string, string> = {
   Other: "✳️",
 };
 
-const DEFAULT_VISIBLE_CATEGORIES = 4;
+const DEFAULT_VISIBLE_CATEGORIES = 3;
 
 function toCategory(kind: string): string {
   const k = kind.trim().toLowerCase();
@@ -44,11 +50,6 @@ function distanceLabel(meters: number): string {
   if (meters < 150) return "very close";
   if (meters <= 300) return "short walk";
   return "nearby";
-}
-
-function formatDistanceRow(meters: number): string {
-  const label = distanceLabel(meters);
-  return `${label} (${Math.round(meters)} m)`;
 }
 
 function formatClosestMeta(meters: number): string {
@@ -151,37 +152,37 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
   if (pois.length === 0) return null;
 
   const sectionStyle = {
-    marginTop: "1.25rem",
+    marginTop: "0.65rem",
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.75rem 0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.65rem 0.75rem",
   } as const;
   const cardStyle = {
     border: "1px solid #e5e7eb",
-    borderRadius: "0.5rem",
-    padding: "0.6rem 0.75rem",
-    marginTop: "0.5rem",
+    borderRadius: "0.45rem",
+    padding: "0.45rem 0.55rem",
+    marginTop: "0.35rem",
     backgroundColor: "#fafafa",
   } as const;
 
   return (
     <section style={sectionStyle}>
-      <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 600, color: "#111827" }}>
+      <h2 style={{ margin: 0, fontSize: "1.05rem", fontWeight: 600, color: "#111827" }}>
         Amenities along the route
       </h2>
-      <p style={{ margin: "0.25rem 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
+      <p style={{ margin: "0.15rem 0 0", fontSize: "0.76rem", color: "#6b7280" }}>
         Nearby facilities around the start, middle, and end of this trail.
       </p>
 
       {amenityPoints && amenityPoints.length >= 1 && (
-        <div style={{ marginTop: "0.9rem" }}>
+        <div style={{ marginTop: "0.55rem" }}>
           <div style={{
-            fontSize: "0.72rem",
+            fontSize: "0.66rem",
             fontWeight: 700,
             letterSpacing: "0.05em",
             textTransform: "uppercase" as const,
             color: "#6b7280",
-            marginBottom: "0.35rem",
+            marginBottom: "0.2rem",
           }}>
             Amenities along the trail
           </div>
@@ -191,37 +192,37 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
 
       <div
         style={{
-          marginTop: "0.5rem",
+          marginTop: "0.35rem",
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(12rem, 1fr))",
-          gap: "0.5rem",
+          gap: "0.4rem",
         }}
       >
         {groups.map(({ anchor, pois: anchorPois, categories }) => {
           const visibleCategories = categories.slice(0, DEFAULT_VISIBLE_CATEGORIES);
           const moreCategories = categories.slice(DEFAULT_VISIBLE_CATEGORIES);
           const sortedPois = sortPoisByDistance(anchorPois);
-          const firstDetails = sortedPois.slice(0, 6);
-          const restDetails = sortedPois.slice(6);
+          const firstDetails = sortedPois.slice(0, 3);
+          const restDetails = sortedPois.slice(3);
           const restCount = restDetails.length;
 
           return (
             <div key={anchor} style={cardStyle}>
-              <h3 style={{ margin: 0, fontSize: "0.95rem", fontWeight: 600, color: "#374151" }}>
+              <h3 style={{ margin: 0, fontSize: "0.86rem", fontWeight: 600, color: "#374151" }}>
                 {ANCHOR_LABELS[anchor] ?? anchor}
               </h3>
               {categories.length === 0 ? (
-                <p style={{ margin: "0.4rem 0 0", fontSize: "0.85rem", color: "#6b7280" }}>
+                <p style={{ margin: "0.25rem 0 0", fontSize: "0.76rem", color: "#6b7280" }}>
                   No mapped amenities near this part of the trail.
                 </p>
               ) : (
                 <>
                   {anchorMicroSummary(categories) ? (
-                    <p style={{ margin: "0.25rem 0 0", fontSize: "0.8rem", color: "#6b7280" }}>
+                    <p style={{ margin: "0.18rem 0 0", fontSize: "0.74rem", color: "#6b7280" }}>
                       {anchorMicroSummary(categories)}
                     </p>
                   ) : null}
-                  <div style={{ marginTop: "0.5rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <div style={{ marginTop: "0.35rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
                     {visibleCategories.map(({ label, count, minMeters }) => (
                       <div
                         key={label}
@@ -234,41 +235,41 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                          <span style={{ fontSize: "1rem" }}>{CATEGORY_ICON[label] ?? CATEGORY_ICON.Other}</span>
-                          <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#374151" }}>{label}</span>
+                          <span style={{ fontSize: "0.9rem" }}>{CATEGORY_ICON[label] ?? CATEGORY_ICON.Other}</span>
+                          <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>{label}</span>
                         </div>
                         <span
                           style={{
-                            fontSize: "0.75rem",
+                            fontSize: "0.68rem",
                             fontWeight: 600,
                             color: "#374151",
                             background: "#e5e7eb",
-                            padding: "0.1rem 0.4rem",
+                            padding: "0.08rem 0.34rem",
                             borderRadius: "9999px",
                           }}
                         >
                           {count}
                         </span>
-                        <div style={{ width: "100%", fontSize: "0.75rem", color: "#6b7280" }}>
+                        <div style={{ width: "100%", fontSize: "0.67rem", color: "#6b7280" }}>
                           {formatClosestMeta(minMeters)}
                         </div>
                       </div>
                     ))}
                   </div>
                   {moreCategories.length > 0 ? (
-                    <details style={{ marginTop: "0.35rem" }}>
+                    <details style={{ marginTop: "0.2rem" }}>
                       <summary
                         style={{
                           cursor: "pointer",
-                          fontSize: "0.8rem",
+                          fontSize: "0.72rem",
                           color: "#2563eb",
                           listStyle: "none",
                           textDecoration: "underline",
                         }}
                       >
-                        Show all amenities ({moreCategories.length} more)
+                        Show {moreCategories.length} more
                       </summary>
-                      <div style={{ marginTop: "0.35rem", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                      <div style={{ marginTop: "0.2rem", display: "flex", flexDirection: "column", gap: "0.3rem" }}>
                         {moreCategories.map(({ label, count, minMeters }) => (
                           <div
                             key={label}
@@ -281,22 +282,22 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                             }}
                           >
                             <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
-                              <span style={{ fontSize: "1rem" }}>{CATEGORY_ICON[label] ?? CATEGORY_ICON.Other}</span>
-                              <span style={{ fontSize: "0.85rem", fontWeight: 600, color: "#374151" }}>{label}</span>
+                              <span style={{ fontSize: "0.9rem" }}>{CATEGORY_ICON[label] ?? CATEGORY_ICON.Other}</span>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 600, color: "#374151" }}>{label}</span>
                             </div>
                             <span
                               style={{
-                                fontSize: "0.75rem",
+                                fontSize: "0.68rem",
                                 fontWeight: 600,
                                 color: "#374151",
                                 background: "#e5e7eb",
-                                padding: "0.1rem 0.4rem",
+                                padding: "0.08rem 0.34rem",
                                 borderRadius: "9999px",
                               }}
                             >
                               {count}
                             </span>
-                            <div style={{ width: "100%", fontSize: "0.75rem", color: "#6b7280" }}>
+                            <div style={{ width: "100%", fontSize: "0.67rem", color: "#6b7280" }}>
                               {formatClosestMeta(minMeters)}
                             </div>
                           </div>
@@ -307,8 +308,8 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                   {sortedPois.length > 0 ? (
                     <div
                       style={{
-                        marginTop: "0.5rem",
-                        paddingTop: "0.5rem",
+                        marginTop: "0.35rem",
+                        paddingTop: "0.35rem",
                         borderTop: "1px solid #e5e7eb",
                       }}
                     >
@@ -316,15 +317,15 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                         <summary
                         style={{
                           cursor: "pointer",
-                          fontSize: "0.8rem",
+                          fontSize: "0.72rem",
                           color: "#2563eb",
                           listStyle: "none",
                           textDecoration: "underline",
                         }}
                       >
-                        See details
+                        Point details
                       </summary>
-                      <ul style={{ margin: "0.35rem 0 0", paddingLeft: "1rem", listStyle: "none", fontSize: "0.8rem" }}>
+                      <ul style={{ margin: "0.25rem 0 0", paddingLeft: "0.8rem", listStyle: "none", fontSize: "0.72rem" }}>
                         {firstDetails.map((poi, i) => {
                           const kind = typeof poi.kind === "string" ? poi.kind : "";
                           const label = toCategory(kind);
@@ -341,7 +342,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                             <li
                               key={i}
                               style={{
-                                marginBottom: "0.35rem",
+                                marginBottom: "0.2rem",
                                 display: "flex",
                                 flexWrap: "wrap",
                                 alignItems: "baseline",
@@ -352,7 +353,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                               <div>
                                 <span style={{ color: "#374151" }}>{primary}</span>
                                 {secondary ? (
-                                  <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{secondary}</div>
+                                  <div style={{ fontSize: "0.67rem", color: "#6b7280" }}>{secondary}</div>
                                 ) : null}
                               </div>
                               {url ? (
@@ -360,7 +361,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                                   href={url}
                                   target="_blank"
                                   rel="noopener"
-                                  style={{ fontSize: "0.75rem", color: "#2563eb", whiteSpace: "nowrap" }}
+                                  style={{ fontSize: "0.67rem", color: "#2563eb", whiteSpace: "nowrap" }}
                                   title="OpenStreetMap"
                                 >
                                   ↗
@@ -371,11 +372,11 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                         })}
                       </ul>
                       {restCount > 0 ? (
-                        <details style={{ marginTop: "0.25rem" }}>
+                        <details style={{ marginTop: "0.15rem" }}>
                           <summary
                             style={{
                               cursor: "pointer",
-                              fontSize: "0.75rem",
+                              fontSize: "0.67rem",
                               color: "#6b7280",
                               listStyle: "none",
                               textDecoration: "underline",
@@ -383,7 +384,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                           >
                             Show {restCount} more
                           </summary>
-                          <ul style={{ margin: "0.35rem 0 0", paddingLeft: "1rem", listStyle: "none", fontSize: "0.8rem" }}>
+                          <ul style={{ margin: "0.22rem 0 0", paddingLeft: "0.8rem", listStyle: "none", fontSize: "0.72rem" }}>
                             {restDetails.map((poi, i) => {
                               const kind = typeof poi.kind === "string" ? poi.kind : "";
                               const label = toCategory(kind);
@@ -401,7 +402,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                                 <li
                                   key={i}
                                   style={{
-                                    marginBottom: "0.35rem",
+                                    marginBottom: "0.2rem",
                                     display: "flex",
                                     flexWrap: "wrap",
                                     alignItems: "baseline",
@@ -412,7 +413,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                                   <div>
                                     <span style={{ color: "#374151" }}>{primary}</span>
                                     {secondary ? (
-                                      <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{secondary}</div>
+                                      <div style={{ fontSize: "0.67rem", color: "#6b7280" }}>{secondary}</div>
                                     ) : null}
                                   </div>
                                   {url ? (
@@ -420,7 +421,7 @@ export function RouteAmenitiesSection({ trailheadPOIs, amenityPoints, lengthMile
                                       href={url}
                                       target="_blank"
                                       rel="noopener"
-                                      style={{ fontSize: "0.75rem", color: "#2563eb", whiteSpace: "nowrap" }}
+                                      style={{ fontSize: "0.67rem", color: "#2563eb", whiteSpace: "nowrap" }}
                                       title="OpenStreetMap"
                                     >
                                       ↗

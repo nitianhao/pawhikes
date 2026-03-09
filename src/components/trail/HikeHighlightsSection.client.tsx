@@ -316,6 +316,8 @@ export function HikeHighlightsSection({ highlightsRaw }: Props) {
   const [sortBy, setSortBy] = useState<HighlightSort>("closest");
   const [categoryFilters, setCategoryFilters] = useState<Set<string>>(new Set());
   const [bandFilters, setBandFilters] = useState<Set<Highlight["distanceBand"]>>(new Set());
+  const [showAllRows, setShowAllRows] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const categories = useMemo(() => {
@@ -336,6 +338,8 @@ export function HikeHighlightsSection({ highlightsRaw }: Props) {
         : byCategory.filter((h) => bandFilters.has(h.distanceBand));
     return sortHighlights(byBand, sortBy);
   }, [highlights, search, categoryFilters, bandFilters, sortBy]);
+  const visible = showAllRows ? filtered : filtered.slice(0, 3);
+  const hiddenCount = Math.max(0, filtered.length - visible.length);
 
   const toggleCategory = useCallback((category: string) => {
     setCategoryFilters((prev) => {
@@ -364,13 +368,6 @@ export function HikeHighlightsSection({ highlightsRaw }: Props) {
         </div>
         <span style={S.countPill}>{highlights.length} total</span>
       </div>
-      <p style={S.helperText}>
-        Points of interest near the trail (from OpenStreetMap). Distances are from the trail line.{" "}
-        <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer" style={S.sourceLink}>
-          Data source: OpenStreetMap
-        </a>
-      </p>
-
       <SummaryGlance highlights={highlights} />
 
       {highlights.length === 0 ? (
@@ -400,6 +397,14 @@ export function HikeHighlightsSection({ highlightsRaw }: Props) {
       ) : null}
 
       {highlights.length > 0 ? (
+      <div style={S.filtersToggleWrap}>
+        <button type="button" style={S.inlineBtn} onClick={() => setShowFilters((v) => !v)}>
+          {showFilters ? "Hide filters" : "Show filters"}
+        </button>
+      </div>
+      ) : null}
+
+      {highlights.length > 0 && showFilters ? (
       <div style={S.filterRows}>
         <div style={S.filterGroup}>
           {categories.map(([category, count]) => (
@@ -433,9 +438,14 @@ export function HikeHighlightsSection({ highlightsRaw }: Props) {
 
       {highlights.length > 0 ? (
         <div style={S.list} ref={listRef} tabIndex={-1}>
-          {filtered.map((h) => <HighlightRow key={h.id} h={h} />)}
+          {visible.map((h) => <HighlightRow key={h.id} h={h} />)}
           {filtered.length === 0 ? <p style={S.emptyNote}>No highlights match your filters.</p> : null}
         </div>
+      ) : null}
+      {highlights.length > 0 && hiddenCount > 0 ? (
+        <button type="button" style={S.toggleBtn} onClick={() => setShowAllRows((v) => !v)}>
+          {showAllRows ? "Show fewer highlights" : `Show ${hiddenCount} more highlights`}
+        </button>
       ) : null}
     </section>
   );
@@ -447,10 +457,10 @@ export function HikeHighlightsSection({ highlightsRaw }: Props) {
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
     width: "100%",
     boxSizing: "border-box",
   } as const,
@@ -469,7 +479,7 @@ const S = {
   } as const,
   title: {
     margin: 0,
-    fontSize: "1.2rem",
+    fontSize: "1.1rem",
     fontWeight: 600,
     color: "#111827",
   } as const,
@@ -481,14 +491,14 @@ const S = {
   countPill: {
     border: "1px solid #e5e7eb",
     borderRadius: "999px",
-    padding: "0.2rem 0.55rem",
-    fontSize: "0.78rem",
+    padding: "0.18rem 0.5rem",
+    fontSize: "0.74rem",
     color: "#374151",
     background: "#fff",
   } as const,
   helperText: {
-    margin: "0.35rem 0 0",
-    fontSize: "0.8rem",
+    margin: "0.3rem 0 0",
+    fontSize: "0.75rem",
     color: "#6b7280",
   } as const,
   sourceLink: {
@@ -497,7 +507,7 @@ const S = {
   } as const,
 
   glanceWrap: {
-    marginTop: "0.55rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.35rem",
@@ -509,14 +519,14 @@ const S = {
     gap: "0.25rem",
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
-    padding: "0.2rem 0.45rem",
+    padding: "0.16rem 0.4rem",
     background: "#fff",
     color: "#374151",
-    fontSize: "0.78rem",
+    fontSize: "0.72rem",
   } as const,
 
   controlsWrap: {
-    marginTop: "0.6rem",
+    marginTop: "0.3rem",
     display: "flex",
     gap: "0.45rem",
     flexWrap: "wrap" as const,
@@ -526,18 +536,18 @@ const S = {
     display: "flex",
     alignItems: "center",
     gap: "0.35rem",
-    padding: "0.35rem 0.55rem",
+    padding: "0.3rem 0.45rem",
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
     background: "#fff",
-    flex: "1 1 200px",
+    flex: "1 1 180px",
     minWidth: 0,
   } as const,
   searchInput: {
     border: "none",
     outline: "none",
     width: "100%",
-    fontSize: "0.85rem",
+    fontSize: "0.78rem",
     color: "#111827",
     background: "transparent",
   } as const,
@@ -545,7 +555,7 @@ const S = {
     display: "inline-flex",
     alignItems: "center",
     gap: "0.35rem",
-    padding: "0.35rem 0.55rem",
+    padding: "0.3rem 0.45rem",
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
     background: "#fff",
@@ -554,38 +564,38 @@ const S = {
     border: "none",
     outline: "none",
     background: "transparent",
-    fontSize: "0.82rem",
+    fontSize: "0.76rem",
     color: "#111827",
   } as const,
   filterRows: {
-    marginTop: "0.5rem",
+    marginTop: "0.25rem",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.3rem",
+    gap: "0.22rem",
     width: "100%",
   } as const,
   filterGroup: {
     display: "flex",
     flexWrap: "wrap" as const,
-    gap: "0.3rem",
+    gap: "0.22rem",
     width: "100%",
   } as const,
   filterChip: {
     border: "1px solid #e5e7eb",
     borderRadius: "999px",
-    padding: "0.18rem 0.5rem",
+    padding: "0.14rem 0.4rem",
     background: "#fff",
     color: "#475569",
-    fontSize: "0.75rem",
+    fontSize: "0.7rem",
     cursor: "pointer",
   } as const,
   filterChipActive: {
     border: "1px solid #6366f1",
     borderRadius: "999px",
-    padding: "0.18rem 0.5rem",
+    padding: "0.14rem 0.4rem",
     background: "#eef2ff",
     color: "#4338ca",
-    fontSize: "0.75rem",
+    fontSize: "0.7rem",
     cursor: "pointer",
   } as const,
 
@@ -641,10 +651,10 @@ const S = {
 
   // List
   list: {
-    marginTop: "0.55rem",
+    marginTop: "0.25rem",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.3rem",
+    gap: "0.22rem",
     width: "100%",
   } as const,
   catHeading: {
@@ -659,7 +669,7 @@ const S = {
   // Row
   rowWrapper: {
     border: "1px solid #f1f5f9",
-    borderRadius: "0.55rem",
+    borderRadius: "0.5rem",
     background: "#fafafa",
     overflow: "hidden",
     width: "100%",
@@ -669,8 +679,8 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: "0.75rem",
-    padding: "0.45rem 0.55rem",
+    gap: "0.45rem",
+    padding: "0.25rem 0.35rem",
     width: "100%",
     boxSizing: "border-box",
     background: "transparent",
@@ -679,7 +689,7 @@ const S = {
   rowLeft: {
     display: "flex",
     alignItems: "center",
-    gap: "0.55rem",
+    gap: "0.35rem",
     minWidth: 0,
     flex: 1,
   } as const,
@@ -687,8 +697,8 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "28px",
-    height: "28px",
+    width: "20px",
+    height: "20px",
     borderRadius: "50%",
     background: "#eef2ff",
     flexShrink: 0,
@@ -700,15 +710,15 @@ const S = {
   rowTitle: {
     margin: 0,
     fontWeight: 600,
-    fontSize: "0.88rem",
+    fontSize: "0.75rem",
     color: "#111827",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap" as const,
   } as const,
   rowSubtitle: {
-    margin: "0.1rem 0 0",
-    fontSize: "0.78rem",
+    margin: "0.05rem 0 0",
+    fontSize: "0.68rem",
     color: "#6b7280",
     overflow: "hidden",
     textOverflow: "ellipsis",
@@ -716,12 +726,12 @@ const S = {
   } as const,
   bandBadge: {
     display: "inline-flex",
-    marginTop: "0.2rem",
+    marginTop: "0.08rem",
     border: "1px solid #e2e8f0",
     borderRadius: "999px",
-    padding: "0.08rem 0.38rem",
+    padding: "0.06rem 0.32rem",
     color: "#64748b",
-    fontSize: "0.68rem",
+    fontSize: "0.6rem",
     width: "fit-content",
   } as const,
   distanceCol: {
@@ -733,26 +743,26 @@ const S = {
   } as const,
   rowDist: {
     flexShrink: 0,
-    fontSize: "0.86rem",
+    fontSize: "0.72rem",
     fontWeight: 700,
     color: "#374151",
     fontVariantNumeric: "tabular-nums" as const,
   } as const,
   distanceSub: {
-    fontSize: "0.7rem",
+    display: "none",
     color: "#94a3b8",
   } as const,
   rowActionsTop: {
     display: "flex",
     alignItems: "center",
-    gap: "0.3rem",
+    gap: "0.2rem",
     flexWrap: "wrap" as const,
     justifyContent: "flex-end",
   } as const,
 
   // Detail panel (accordion)
   detailPanel: {
-    padding: "0.35rem 0.55rem 0.55rem 2.9rem",
+    padding: "0.3rem 0.45rem 0.45rem 2.5rem",
     borderTop: "1px solid #f1f5f9",
     background: "#fff",
   } as const,
@@ -761,9 +771,9 @@ const S = {
     justifyContent: "space-between",
     alignItems: "center",
     gap: "0.75rem",
-    padding: "0.12rem 0",
+    padding: "0.1rem 0",
     borderBottom: "1px solid #f1f5f9",
-    fontSize: "0.78rem",
+    fontSize: "0.72rem",
     color: "#374151",
   } as const,
   detailLabel: {
@@ -784,21 +794,21 @@ const S = {
   } as const,
   tagsHeading: {
     margin: "0.3rem 0 0.15rem",
-    fontSize: "0.78rem",
+    fontSize: "0.72rem",
     color: "#374151",
   } as const,
   warning: {
     margin: "0 0 0.4rem",
-    fontSize: "0.75rem",
+    fontSize: "0.7rem",
     color: "#b45309",
   } as const,
   emptyNote: {
     margin: "0.25rem 0",
-    fontSize: "0.78rem",
+    fontSize: "0.72rem",
     color: "#6b7280",
   } as const,
   rowActions: {
-    marginTop: "0.4rem",
+    marginTop: "0.3rem",
     display: "flex",
     alignItems: "center",
     gap: "0.3rem",
@@ -807,15 +817,15 @@ const S = {
     display: "inline-flex",
     alignItems: "center",
     gap: "0.25rem",
-    height: "28px",
+    height: "20px",
     borderRadius: "0.4rem",
     border: "1px solid #e5e7eb",
     background: "#fff",
     color: "#374151",
     cursor: "pointer",
     textDecoration: "none",
-    padding: "0 0.5rem",
-    fontSize: "0.75rem",
+    padding: "0 0.34rem",
+    fontSize: "0.64rem",
   } as const,
   linkBtn: {
     border: "none",
@@ -823,19 +833,19 @@ const S = {
     color: "#4f46e5",
     cursor: "pointer",
     padding: 0,
-    fontSize: "0.78rem",
+    fontSize: "0.72rem",
   } as const,
   rawPre: {
-    margin: "0.45rem 0 0",
-    padding: "0.5rem",
+    margin: "0.35rem 0 0",
+    padding: "0.4rem",
     border: "1px solid #e5e7eb",
     borderRadius: "0.45rem",
     background: "#f8fafc",
     color: "#334155",
-    fontSize: "0.7rem",
+    fontSize: "0.66rem",
     whiteSpace: "pre-wrap" as const,
     wordBreak: "break-word" as const,
-    maxHeight: "220px",
+    maxHeight: "180px",
     overflow: "auto",
   } as const,
 
@@ -844,8 +854,8 @@ const S = {
     display: "inline-flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "28px",
-    height: "28px",
+    width: "24px",
+    height: "24px",
     borderRadius: "0.4rem",
     border: "1px solid #e5e7eb",
     background: "#fff",
@@ -856,22 +866,25 @@ const S = {
     fontSize: 0,
   } as const,
   unsupported: {
-    fontSize: "0.72rem",
+    fontSize: "0.66rem",
     color: "#9ca3af",
   } as const,
   toggleBtn: {
-    marginTop: "0.55rem",
+    marginTop: "0.25rem",
     display: "inline-flex",
     alignItems: "center",
     gap: "0.25rem",
     border: "1px solid #e0e7ff",
     borderRadius: "0.5rem",
-    padding: "0.3rem 0.7rem",
-    fontSize: "0.82rem",
+    padding: "0.16rem 0.42rem",
+    fontSize: "0.66rem",
     fontWeight: 500,
     color: "#4f46e5",
     background: "#eef2ff",
     cursor: "pointer",
     font: "inherit",
+  } as const,
+  filtersToggleWrap: {
+    marginTop: "0.22rem",
   } as const,
 } as const;

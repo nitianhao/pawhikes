@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getAdminDbSafe, instantDbMissingEnvMessage } from "@/lib/instant/safeAdmin";
+import { buildPageMetadata } from "@/lib/seo/metadata";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,12 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  return { title: slug.replace(/-/g, " ") };
+  return buildPageMetadata({
+    title: slug.replace(/-/g, " "),
+    description: "Legacy trail route.",
+    pathname: `/trails/${encodeURIComponent(slug)}`,
+    index: false,
+  });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

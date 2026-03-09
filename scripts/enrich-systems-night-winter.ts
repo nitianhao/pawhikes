@@ -69,6 +69,7 @@ const sampleMeters = typeof args.sampleMeters === "string" ? parseFloat(args.sam
 const nearMeters   = typeof args.nearMeters   === "string" ? parseFloat(args.nearMeters)   : 30;
 const isDryRun     = !args.write;
 const isVerbose    = !!args.verbose;
+const minLength    = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
 
 // Street lamp enhancement — count lamps within this radius of trail
 const LAMP_NEAR_M  = 50;
@@ -498,6 +499,10 @@ async function main(): Promise<void> {
     const n = stateFilter.toLowerCase();
     systems = systems.filter((s: any) => !s.state || s.state.toLowerCase().includes(n));
     console.log(`  After state="${stateFilter}": ${systems.length}`);
+  }
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) > minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
   }
   if (limitArg && !Number.isNaN(limitArg) && limitArg > 0) {
     systems = systems.slice(0, limitArg);

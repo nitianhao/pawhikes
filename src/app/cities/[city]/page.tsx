@@ -1,7 +1,29 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getAdminDbSafe, instantDbMissingEnvMessage } from "@/lib/instant/safeAdmin";
 import CityTrailsList from "../_components/CityTrailsList";
 import { safeDecodeURIComponent } from "@/lib/slug";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ city: string }>;
+}): Promise<Metadata> {
+  const { city } = await params;
+  const citySlug = safeDecodeURIComponent(city);
+  const cityLabel = citySlug
+    .split("-")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+
+  return buildPageMetadata({
+    title: `${cityLabel} Trails`,
+    description: "Legacy city route.",
+    pathname: `/cities/${encodeURIComponent(citySlug)}`,
+    index: false,
+  });
+}
 
 export default async function CityPage({
   params,

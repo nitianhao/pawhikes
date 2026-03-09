@@ -78,14 +78,14 @@ function formatOffTrail(distM: number): string {
 
 // ── layout ────────────────────────────────────────────────────────────────────
 const W         = 600;
-const PAD_LEFT  = 96;   // emoji + label column
+const PAD_LEFT  = 88;   // emoji + label column
 const PAD_RIGHT = 8;
 const PAD_TOP   = 4;
-const ROW_H     = 24;   // height per lane
-const AXIS_H    = 18;
+const ROW_H     = 20;   // height per lane
+const AXIS_H    = 16;
 const CHART_W   = W - PAD_LEFT - PAD_RIGHT;
-const DOT_R     = 5.5;
-const HIT_R     = 12;   // invisible larger hit target for easier tapping
+const DOT_R     = 4.5;
+const HIT_R     = 10;   // invisible larger hit target for easier tapping
 
 function toSvgX(d: number, maxD: number): number {
   return PAD_LEFT + (maxD > 0 ? Math.min(1, d / maxD) * CHART_W : 0);
@@ -254,8 +254,8 @@ export function HighlightProfileChart({ points, totalMiles }: Props) {
       {/* Info strip — shown when a dot is selected */}
       {activePt && activeMeta && (
         <div style={{
-          marginTop: "0.4rem",
-          padding: "0.35rem 0.65rem",
+          marginTop: "0.28rem",
+          padding: "0.28rem 0.5rem",
           background: activeMeta.color + "12",
           border: `1px solid ${activeMeta.color}35`,
           borderRadius: "0.45rem",
@@ -263,11 +263,11 @@ export function HighlightProfileChart({ points, totalMiles }: Props) {
           alignItems: "center",
           flexWrap: "wrap" as const,
           gap: "0.3rem 0.5rem",
-          fontSize: "0.8rem",
+          fontSize: "0.72rem",
           color: "#374151",
           lineHeight: 1.4,
         }}>
-          <span style={{ fontSize: "1rem" }}>{activeMeta.emoji}</span>
+          <span style={{ fontSize: "0.9rem" }}>{activeMeta.emoji}</span>
           <span style={{ fontWeight: 600, color: "#111827" }}>
             {activePt.name ?? activeMeta.label}
           </span>

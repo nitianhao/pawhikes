@@ -30,6 +30,7 @@
     "instant:push:migrateAustinKeys": "node scripts/instant-push-migrate-austin-keys.mjs",
     "instant:push:migrateAustinLinkKeys": "node scripts/instant-push-migrate-austin-linkkeys.mjs",
     "austin:ingest": "node scripts/ingest-austin-open-data.mjs",
+    "houston:ingest": "node scripts/ingest-houston-data.mjs",
     "rollup:systems": "tsx scripts/rollup-systems-from-segments.ts",
     "link:segments": "node scripts/link-segments-to-systems.mjs",
     "trailheads:backfill:primary": "node scripts/backfill-primary-trailheads.mjs",
@@ -44,7 +45,8 @@
     "gen:faqs": "tsx scripts/generateTrailFaqs.ts",
     "store:faqs": "tsx scripts/dev/store-faqs.ts",
     "gen:content": "tsx scripts/generateTrailContent.ts",
-    "store:content": "tsx scripts/dev/store-content.ts"
+    "store:content": "tsx scripts/dev/store-content.ts",
+    "build:search": "tsx scripts/build-search-index.ts"
   },
   "dependencies": {
     "@instantdb/admin": "^0.18.9",

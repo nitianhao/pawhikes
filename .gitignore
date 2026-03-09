@@ -29,6 +29,10 @@ out/faqs/
 .next-build/
 .next-dev/
 
+# build artifacts & logs
+tsconfig.tsbuildinfo
+*.log
+
 # env (do not commit secrets)
 .env
 .env*.local
@@ -38,3 +42,4 @@ next-env.d.ts
 
 .env.local
 credentials/
+.vercel

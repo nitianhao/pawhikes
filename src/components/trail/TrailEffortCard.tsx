@@ -66,16 +66,22 @@ function formatGainPerMile(v: number | null | undefined): string {
   return `${Math.round(v)} ft/mi`;
 }
 
-const ORANGE = "#ea580c";
-const TRACK_NEUTRAL = "#e5e7eb";
-const SLATE_500 = "#64748b";
-const SLATE_900 = "#0f172a";
-const MARKER_INACTIVE = "#9ca3af";
+const TRACK_NEUTRAL = "#f0ece6";
+const SLATE_500 = "#6b6457";
+const SLATE_900 = "#1c1a17";
+const MARKER_INACTIVE = "#c8c0b4";
+
+function effortColor(level: EffortLevel): string {
+  if (level === "easy") return "#2f7d4b";
+  if (level === "moderate") return "#b45309";
+  if (level === "challenging") return "#c2410c";
+  return "#dc2626";
+}
 
 function labelStyle(value: EffortLevel, level: EffortLevel): CSSProperties {
   const isActive = level === value;
   return {
-    fontSize: "0.6875rem",
+    fontSize: "0.75rem",
     fontWeight: isActive ? 600 : 500,
     color: isActive ? SLATE_900 : SLATE_500,
   };
@@ -90,6 +96,7 @@ export type DifficultyScaleProps = {
 
 function DifficultyScale({ value }: DifficultyScaleProps) {
   const index = levelIndex(value);
+  const fillColor = effortColor(value);
   // Fill from start to the segment before the active marker: (index - 1) / 3 gives 0, 0.33, 0.66, 1
   const fillFraction = index <= 1 ? 0 : (index - 1) / 3;
 
@@ -140,7 +147,7 @@ function DifficultyScale({ value }: DifficultyScaleProps) {
               width: `${fillFraction * 100}%`,
               height: 4,
               borderRadius: "2px 0 0 2px",
-              backgroundColor: ORANGE,
+              backgroundColor: fillColor,
             }}
           />
         )}
@@ -158,7 +165,7 @@ function DifficultyScale({ value }: DifficultyScaleProps) {
                 width: isActive ? 10 : 8,
                 height: isActive ? 10 : 8,
                 borderRadius: "50%",
-                backgroundColor: isActive ? ORANGE : MARKER_INACTIVE,
+                backgroundColor: isActive ? fillColor : MARKER_INACTIVE,
                 border: isActive ? "none" : "2px solid #fff",
                 boxSizing: "border-box",
                 zIndex: 1,
@@ -207,14 +214,14 @@ function MetricChips({ metrics }: { metrics: TrailEffortMetrics }) {
             gap: "0.25rem",
             padding: "0.25rem 0.5rem",
             borderRadius: "9999px",
-            border: "1px solid #e5e7eb",
-            backgroundColor: "#f9fafb",
+            border: "1px solid #e5e0d8",
+            backgroundColor: "#faf8f5",
             fontSize: "0.75rem",
-            color: "#374151",
+            color: "#3d3730",
             fontWeight: 500,
           }}
         >
-          <span style={{ color: "#6b7280", fontWeight: 600 }}>{c.label}:</span>
+          <span style={{ color: "#6b6457", fontWeight: 600 }}>{c.label}:</span>
           {c.value}
         </span>
       ))}
@@ -255,9 +262,10 @@ function EffortInfoPopover() {
         style={{
           display: "inline-flex",
           alignItems: "center",
-          gap: "0.2rem",
-          padding: "0.15rem 0",
-          fontSize: "0.6875rem",
+          gap: "0.25rem",
+          padding: "0.5rem 0.25rem",
+          minHeight: "44px",
+          fontSize: "0.75rem",
           color: SLATE_500,
           background: "none",
           border: "none",
@@ -282,7 +290,7 @@ function EffortInfoPopover() {
             minWidth: "12rem",
             maxWidth: "16rem",
             borderRadius: "0.5rem",
-            border: "1px solid #e5e7eb",
+            border: "1px solid #e5e0d8",
             backgroundColor: "#fff",
             boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
             fontSize: "0.75rem",
@@ -346,7 +354,7 @@ export function TrailEffortCard({ effortLevel, metrics }: TrailEffortCardProps) 
               fontSize: "1.5rem",
               fontWeight: 800,
               lineHeight: 1.2,
-              color: "#111827",
+              color: "#1c1a17",
               margin: 0,
             }}
             id="trail-effort-label"
@@ -357,7 +365,7 @@ export function TrailEffortCard({ effortLevel, metrics }: TrailEffortCardProps) 
             style={{
               margin: "0.2rem 0 0",
               fontSize: "0.875rem",
-              color: "#374151",
+              color: "#3d3730",
               lineHeight: 1.45,
             }}
           >
@@ -372,7 +380,7 @@ export function TrailEffortCard({ effortLevel, metrics }: TrailEffortCardProps) 
 
       {/* Below scale: rated-from + how we rate */}
       <div style={{ marginTop: "0.5rem", display: "flex", flexWrap: "wrap", alignItems: "center", gap: "0.5rem" }}>
-        <span style={{ fontSize: "0.6875rem", color: "#6b7280", lineHeight: 1.4 }}>
+        <span style={{ fontSize: "0.75rem", color: "#6b7280", lineHeight: 1.4 }}>
           {ratedFromLine(metrics)}
         </span>
         <EffortInfoPopover />

@@ -76,6 +76,7 @@ const stateFilter = typeof args.state === "string" ? args.state : undefined;
 const limitArg    = typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
 const isDryRun    = !args.write;
 const isVerbose   = !!args.verbose;
+const minLength   = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
 
 if (!cityFilter) { console.error("Error: --city is required"); process.exit(1); }
 
@@ -496,6 +497,10 @@ async function main(): Promise<void> {
     const n = stateFilter.toLowerCase();
     systems = systems.filter((s: any) => !s.state || s.state.toLowerCase().includes(n));
     console.log(`  After state="${stateFilter}": ${systems.length}`);
+  }
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) > minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
   }
   if (limitArg && !Number.isNaN(limitArg) && limitArg > 0) {
     systems = systems.slice(0, limitArg);

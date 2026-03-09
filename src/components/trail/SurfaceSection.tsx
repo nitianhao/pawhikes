@@ -1,6 +1,6 @@
 import { SurfaceProfileChart, type SurfaceProfilePoint } from "./SurfaceProfileChart";
 import type { LucideIcon } from "lucide-react";
-import { AlertTriangle, ChevronDown, Footprints, HelpCircle, Leaf, Mountain, Route } from "lucide-react";
+import { AlertTriangle, Footprints, HelpCircle, Leaf, Mountain, Route } from "lucide-react";
 
 type SurfaceMap = Record<string, number>;
 
@@ -19,7 +19,7 @@ const LABEL_OVERRIDES: Record<string, string> = {
   "fine gravel": "Fine gravel",
   "boards wood": "Boardwalk (wood)",
   "hard other": "Hard surface (other)",
-  unknown: "Unclassified",
+  unknown: "Not mapped",
 };
 
 const CATEGORY_LOOKUP: Record<string, SurfaceEntry["category"]> = {
@@ -194,7 +194,7 @@ function getSummaryText(entries: SurfaceEntry[]): { interpretation: string; what
   if (primary?.category === "unknown") interpretation = "Surface data is limited, so expect changing conditions.";
 
   const lines: string[] = [];
-  lines.push(`This trail is mostly ${primary?.label ?? "Unclassified"}.`);
+  lines.push(`This trail is mostly ${primary?.label ?? "mixed surfaces"}.`);
   if (second && second.pctNormalized >= 10) {
     lines.push(`A notable share is ${second.label.toLowerCase()} (${second.pctDisplay}).`);
   }
@@ -202,7 +202,7 @@ function getSummaryText(entries: SurfaceEntry[]): { interpretation: string; what
     lines.push(`You will also encounter ${third.label.toLowerCase()} (${third.pctDisplay}).`);
   }
   if (byCategory.unknown >= 15) {
-    lines.push("A significant portion is unclassified, so surfaces may vary.");
+    lines.push("Surface data is incomplete for some sections—expect variety.");
   }
   if (byCategory.hard >= 40) {
     lines.push("Expect harder footing\u2014paws may heat up in summer.");
@@ -299,9 +299,9 @@ function roughnessPillLabel(status: RoughnessStatus): { icon: "footprints" | "al
   }
 }
 
-function roughnessChipLabel(status: RoughnessStatus, percent: number | null): string {
-  const base = status === "unknown" ? "Roughness: Unknown" : `Roughness: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
-  return percent != null ? `${base} (${percent}%)` : base;
+function roughnessChipLabel(status: RoughnessStatus): string {
+  if (status === "unknown") return "Roughness: Unknown";
+  return `Roughness: ${status.charAt(0).toUpperCase() + status.slice(1)}`;
 }
 
 function roughnessSummarySuffix(status: RoughnessStatus): string | null {
@@ -340,12 +340,6 @@ const S = {
     borderRadius: "0.75rem",
     padding: "0.9rem",
   }) as const,
-  headerRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: "0.75rem",
-  } as const,
   title: { margin: 0, fontSize: "1.25rem", fontWeight: 600, color: "#111827" } as const,
   subtitle: { margin: 0, fontSize: "0.85rem", color: "#6b7280" } as const,
   heroCard: {
@@ -354,11 +348,6 @@ const S = {
     borderRadius: "0.6rem",
     background: "#f9fafb",
     padding: "0.6rem 0.75rem",
-  } as const,
-  heroInner: {
-    display: "flex",
-    alignItems: "center",
-    gap: "0.6rem",
   } as const,
   iconBadge: (cat: SurfaceEntry["category"]) => ({
     display: "inline-flex",
@@ -389,9 +378,6 @@ const S = {
     margin: "0.15rem 0 0",
     fontSize: "0.82rem",
     color: "#6b7280",
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap" as const,
   } as const,
   pillRow: {
     display: "flex",
@@ -544,39 +530,61 @@ const S = {
     fontWeight: 600,
     color: "#6b7280",
   } as const,
-  details: {
-    marginTop: "0.65rem",
+  compactWrap: {
+    marginTop: "0.6rem",
+    gap: "0.6rem",
+  } as const,
+  compactCard: {
     border: "1px solid #e5e7eb",
     borderRadius: "0.55rem",
-    background: "white",
-    padding: "0.45rem 0.65rem",
+    background: "#fff",
+    padding: "0.55rem 0.65rem",
   } as const,
-  summaryRow: {
+  compactTitle: {
+    margin: 0,
+    fontSize: "0.72rem",
+    fontWeight: 700,
+    letterSpacing: "0.06em",
+    textTransform: "uppercase" as const,
+    color: "#6b7280",
+  } as const,
+  mixList: {
+    marginTop: "0.35rem",
     display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    cursor: "pointer",
-    fontSize: "0.85rem",
-    fontWeight: 500,
-    color: "#374151",
+    flexDirection: "column" as const,
+    gap: "0.3rem",
   } as const,
-  detailsList: {
-    marginTop: "0.4rem",
-  } as const,
-  detailRow: (isUnknown: boolean) => ({
-    display: "flex",
-    justifyContent: "space-between",
+  mixRow: {
+    display: "grid",
+    gridTemplateColumns: "minmax(90px, 1fr) minmax(120px, 2fr) auto",
     alignItems: "center",
-    padding: "0.2rem 0",
-    borderBottom: "1px solid #f1f5f9",
-    fontSize: "0.82rem",
-    color: isUnknown ? "#94a3b8" : "#374151",
-  }) as const,
-  detailPct: (isUnknown: boolean) => ({
-    fontWeight: 600,
-    fontVariantNumeric: "tabular-nums" as const,
-    color: isUnknown ? "#94a3b8" : "#111827",
-  }) as const,
+    gap: "0.35rem",
+  } as const,
+  mixLabel: {
+    fontSize: "0.78rem",
+    color: "#1f2937",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap" as const,
+  } as const,
+  mixBarTrack: {
+    height: "0.34rem",
+    borderRadius: "9999px",
+    background: "#e5e7eb",
+    overflow: "hidden",
+  } as const,
+  mixPct: {
+    fontSize: "0.77rem",
+    color: "#334155",
+    fontWeight: 700,
+    fontVariantNumeric: "tabular-nums",
+  } as const,
+  compactBody: {
+    marginTop: "0.32rem",
+    fontSize: "0.8rem",
+    lineHeight: 1.4,
+    color: "#4b5563",
+  } as const,
 } as const;
 
 export function SurfaceSection({
@@ -603,9 +611,7 @@ export function SurfaceSection({
   const primary = summaryPrimaryKey
     ? entries.find((entry) => entry.key === summaryPrimaryKey) ?? entries[0]
     : entries[0];
-  const primaryFive = entries.slice(0, 5);
-  const topCards = primaryFive.filter((entry) => entry.pctNormalized >= 2 || entry.key === "unknown");
-  const stackedSegments = entries.filter((entry) => entry.pctNormalized > 0);
+  const topThree = entries.slice(0, 3);
   const copy = getSummaryText(entries);
   const badges = heroBadges(entries);
   const PrimaryIcon = iconForCategory(primary?.category ?? "unknown");
@@ -620,19 +626,19 @@ export function SurfaceSection({
   return (
     <section style={S.section(roughness.status === "high", roughness.status === "low")}>
       {/* Header row */}
-      <div style={S.headerRow}>
+      <div className="section-header-row">
         <h2 style={S.title}>Surface</h2>
         <p style={S.subtitle}>What your dog will walk on</p>
       </div>
 
       {/* Primary surface hero */}
-      <div style={S.heroCard}>
-        <div style={S.heroInner}>
+      <div style={S.heroCard} className="surface-hero-card">
+        <div className="surface-hero-inner">
           <div style={S.iconBadge(primary?.category ?? "unknown")}>
             <PrimaryIcon size={18} />
           </div>
           <div style={S.heroText}>
-            <p style={S.heroLabel}>Mostly: {primary?.label ?? "Unclassified"}</p>
+            <p style={S.heroLabel}>Mostly: {primary?.label ?? "Mixed"}</p>
             <p style={S.heroHelper}>{copy.interpretation}</p>
           </div>
           <div style={S.pillRow}>
@@ -649,24 +655,6 @@ export function SurfaceSection({
             </span>
           </div>
         </div>
-      </div>
-
-      {/* Stacked distribution bar */}
-      <div style={S.barOuter}>
-        {stackedSegments.length === 0 ? (
-          <div style={{ height: "100%", width: "100%", background: "#cbd5e1" }} title="Unclassified \u2014 100%" />
-        ) : (
-          stackedSegments.map((entry, idx) => (
-            <div
-              key={entry.key}
-              title={`${entry.label} \u2014 ${entry.pctDisplay}`}
-              style={{
-                ...S.barSeg(entry.category, entry.pctNormalized),
-                ...(idx === stackedSegments.length - 1 ? { borderRight: "none" } : {}),
-              }}
-            />
-          ))
-        )}
       </div>
 
       {/* Positional surface profile chart */}
@@ -686,83 +674,55 @@ export function SurfaceSection({
         </div>
       )}
 
-      {/* Top surfaces chip grid + roughness chip */}
-      <div style={S.grid}>
-        {topCards.map((entry) => {
-          const Icon = iconForCategory(entry.category);
-          return (
-            <div key={entry.key} style={S.chip}>
-              <div style={S.chipIconWrap(entry.category)}>
-                <Icon size={14} />
-              </div>
-              <span style={S.chipLabel}>{entry.label}</span>
-              <span style={S.chipPct}>{entry.pctDisplay}</span>
-              <span style={S.pill(entry.category)}>{entry.tag}</span>
-            </div>
-          );
-        })}
-        <div style={S.chip}>
-          <div style={S.chipIconWrapRoughness(roughness.status)}>
-            <Footprints size={14} />
+      {/* Compact summary: top surfaces + quick read */}
+      <div className="surface-compact-wrap" style={S.compactWrap}>
+        <div style={S.compactCard} className="surface-compact-card">
+          <p style={S.compactTitle}>Top surfaces</p>
+          <div style={S.mixList}>
+            {topThree.length === 0 ? (
+              <div style={S.mixLabel}>No surface mix data available</div>
+            ) : (
+              topThree.map((entry) => (
+                <div key={entry.key} style={S.mixRow}>
+                  <span style={S.mixLabel}>{entry.label}</span>
+                  <div style={S.mixBarTrack}>
+                    <div
+                      style={{
+                        height: "100%",
+                        width: `${Math.max(3, entry.pctNormalized)}%`,
+                        background: CATEGORY_BAR_COLOR[entry.category],
+                      }}
+                    />
+                  </div>
+                  <span style={S.mixPct}>{entry.pctDisplay}</span>
+                </div>
+              ))
+            )}
           </div>
-          <span style={S.chipLabel}>{roughnessChipLabel(roughness.status, roughness.percent)}</span>
+        </div>
+
+        <div style={S.compactCard} className="surface-compact-card">
+          <p style={S.compactTitle}>Quick read</p>
+          <div style={{ marginTop: "0.32rem" }}>
+            <span style={roughness.status === "high" ? S.pillRoughnessHigh : S.pillRoughnessNeutral}>
+              {roughnessPill.icon === "alert" ? (
+                <AlertTriangle size={12} style={{ flexShrink: 0, marginRight: "0.2rem" }} />
+              ) : (
+                <Footprints size={12} style={{ flexShrink: 0, marginRight: "0.2rem" }} />
+              )}
+              {roughnessChipLabel(roughness.status)}
+            </span>
+            <p style={S.compactBody}>{whatThisMeansWithRoughness}</p>
+            <div style={S.bestForRow}>
+              <span style={S.bestForLabel}>Best for</span>
+              {bestForItems.map((item) => (
+                <span key={item} style={S.pillNeutral}>{item}</span>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* What it means callout */}
-      <div style={S.callout}>
-        <p style={S.calloutText}>
-          <strong>What it means: </strong>
-          {whatThisMeansWithRoughness}
-        </p>
-        <div style={S.bestForRow}>
-          <span style={S.bestForLabel}>Best for</span>
-          {bestForItems.map((item) => (
-            <span key={item} style={S.pillNeutral}>{item}</span>
-          ))}
-        </div>
-      </div>
-
-      {/* Full breakdown disclosure */}
-      <details style={S.details}>
-        <summary style={S.summaryRow}>
-          <span>Full breakdown</span>
-          <ChevronDown size={14} />
-        </summary>
-        <div style={S.detailsList}>
-          {entries.length === 0 ? (
-            <div style={S.detailRow(true)}>
-              <span>Unclassified</span>
-              <span style={S.detailPct(true)}>100%</span>
-            </div>
-          ) : (
-            entries.map((entry) => (
-              <div key={entry.key} style={S.detailRow(entry.category === "unknown")}>
-                <span>{entry.label}</span>
-                <span style={S.detailPct(entry.category === "unknown")}>{entry.pctDisplay}</span>
-              </div>
-            ))
-          )}
-          <div style={S.detailRow(false)}>
-            <span>roughnessRisk</span>
-            <span style={S.detailPct(false)}>{roughnessRisk ?? "—"}</span>
-          </div>
-          <div style={S.detailRow(false)}>
-            <span>roughnessRiskScore</span>
-            <span style={S.detailPct(false)}>{roughnessRiskScore ?? "—"}</span>
-          </div>
-          {roughnessRiskKnownSamples != null ? (
-            <div style={S.detailRow(false)}>
-              <span>roughnessRiskKnownSamples</span>
-              <span style={S.detailPct(false)}>{String(roughnessRiskKnownSamples)}</span>
-            </div>
-          ) : null}
-          <div style={S.detailRow(false)}>
-            <span>roughness (normalized %)</span>
-            <span style={S.detailPct(false)}>{roughness.percent ?? "—"}</span>
-          </div>
-        </div>
-      </details>
     </section>
   );
 }

@@ -149,19 +149,19 @@ export function AmenitiesGrid({ amenitiesCounts }: AmenitiesGridProps) {
   return (
     <section
       style={{
-        marginTop: "1.25rem",
+        marginTop: 0,
         border: "1px solid #e5e7eb",
-        borderRadius: "1rem",
-        padding: "0.9rem",
+        borderRadius: "0.7rem",
+        padding: "0.65rem",
       }}
     >
-      <h2 style={{ marginTop: 0 }}>Amenities on the Trail</h2>
-      <p style={{ marginTop: "0.2rem", color: "#6b7280", fontSize: "0.9rem" }}>
+      <h2 style={{ margin: 0, fontSize: "1rem" }}>Amenities on the Trail</h2>
+      <p style={{ marginTop: "0.12rem", color: "#6b7280", fontSize: "0.78rem" }}>
         What you&apos;ll find along the route
       </p>
 
       {summary.length > 0 ? (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem", marginTop: "0.55rem" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "0.3rem", marginTop: "0.35rem" }}>
           {summary.map((item) => (
             <span
               key={item}
@@ -172,8 +172,8 @@ export function AmenitiesGrid({ amenitiesCounts }: AmenitiesGridProps) {
                 backgroundColor: "#ecfdf5",
                 color: "#065f46",
                 border: "1px solid #a7f3d0",
-                padding: "0.3rem 0.65rem",
-                fontSize: "0.82rem",
+                padding: "0.16rem 0.45rem",
+                fontSize: "0.72rem",
                 fontWeight: 600,
               }}
             >
@@ -185,10 +185,10 @@ export function AmenitiesGrid({ amenitiesCounts }: AmenitiesGridProps) {
 
       <div
         style={{
-          marginTop: "0.75rem",
+          marginTop: "0.4rem",
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))",
-          gap: "0.6rem",
+          gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))",
+          gap: "0.35rem",
         }}
       >
         {cards.map((card) => (
@@ -196,18 +196,22 @@ export function AmenitiesGrid({ amenitiesCounts }: AmenitiesGridProps) {
             key={card.key}
             style={{
               border: "1px solid #e5e7eb",
-              borderRadius: "1rem",
+              borderRadius: "0.65rem",
               background: card.muted ? "#f9fafb" : "#f3f4f6",
               opacity: card.muted ? 0.65 : 1,
-              padding: "0.75rem",
+              padding: "0.45rem 0.5rem",
             }}
           >
-            <div style={{ fontSize: "1.8rem", lineHeight: 1 }}>{card.icon}</div>
-            <p style={{ margin: "0.45rem 0 0", fontSize: "1.35rem", fontWeight: 800, color: "#111827" }}>
-              {card.count}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.45rem" }}>
+              <div style={{ fontSize: "1.2rem", lineHeight: 1 }}>{card.icon}</div>
+              <p style={{ margin: 0, fontSize: "1.35rem", fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+                {card.count}
+              </p>
+            </div>
+            <p style={{ margin: "0.22rem 0 0", fontWeight: 700, color: "#111827", fontSize: "0.75rem", lineHeight: 1.2 }}>
+              {card.label}
             </p>
-            <p style={{ margin: "0.2rem 0 0", fontWeight: 700, color: "#111827" }}>{card.label}</p>
-            <p style={{ margin: "0.25rem 0 0", color: "#6b7280", fontSize: "0.82rem" }}>{card.helper}</p>
+            <p style={{ margin: "0.12rem 0 0", color: "#6b7280", fontSize: "0.64rem", lineHeight: 1.25 }}>{card.helper}</p>
           </article>
         ))}
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   ExternalLink,
   Globe,
@@ -205,7 +206,8 @@ function VetRow({ vet }: { vet: VetCard }) {
 }
 
 function CopyButton({ text, title }: { text: string; title: string }) {
-  const canCopy = typeof navigator !== "undefined" && !!navigator.clipboard;
+  const [canCopy, setCanCopy] = useState(false);
+  useEffect(() => { setCanCopy(!!navigator.clipboard); }, []);
   if (!canCopy) return null;
   return (
     <button

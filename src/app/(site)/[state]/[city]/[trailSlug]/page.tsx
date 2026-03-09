@@ -1,10 +1,9 @@
 // Data source: InstantDB `trailSystems` + `trailHeads` (full page via getTrailSystemAndHeadsForPage).
 // This page renders enriched `trailSystems` in ordered debug-friendly sections.
 
-import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { Calendar, Medal, Navigation, Sun, TreePine, Users } from "lucide-react";
+import { notFound, permanentRedirect } from "next/navigation";
 import {
   getTrailSystemForPage,
   getTrailSystemHeadsAndSegmentsForPage,
@@ -13,39 +12,52 @@ import {
 import { getAdminDbSafe, instantDbMissingEnvMessage } from "@/lib/instant/safeAdmin";
 import { extractAmenityPoints, extractParkingPoints } from "@/lib/geo/amenities";
 import { timed } from "@/lib/perf";
-import { safeDecodeURIComponent } from "@/lib/slug";
+import { safeDecodeURIComponent, slugifyCity } from "@/lib/slug";
 import { ObjectRenderer } from "@/components/ui/ObjectRenderer";
-import { RulesAndSafetySection } from "@/components/trail/RulesAndSafetySection";
-import { AmenitiesGrid } from "@/components/trail/AmenitiesGrid";
-import { CrowdSection } from "@/components/trail/CrowdSection";
-import { ShadeSection, getShadeShortLabel, getShadeTierLabel } from "@/components/trail/ShadeSection";
-import { SurfaceSection } from "@/components/trail/SurfaceSection";
-import { WaterSection } from "@/components/trail/WaterSection";
-import { LightingSection } from "@/components/trail/LightingSection";
-import { MudRiskSection } from "@/components/trail/MudRiskSection";
-import { AfterDarkSection } from "@/components/trail/AfterDarkSection";
-import { SafetySection } from "@/components/trail/SafetySection";
-import { HazardsSection } from "@/components/trail/HazardsSection";
-import { HikeHighlightsSection } from "@/components/trail/HikeHighlightsSection.client";
-import { HighlightProfileChart } from "@/components/trail/HighlightProfileChart";
-import { ElevationWidthSection } from "@/components/trail/ElevationWidthSection";
-import { ParkingSection } from "@/components/trail/ParkingSection";
-import { RouteAmenitiesSection } from "@/components/trail/RouteAmenitiesSection";
-import { TrailheadsSection } from "@/components/trail/TrailheadsSection";
-import { SwimSection } from "@/components/trail/SwimSection";
-import { WinterSection } from "@/components/trail/WinterSection";
-import { DogTypesSection } from "@/components/trail/DogTypesSection";
-import { TrailSegmentsMapClient } from "@/components/trail/TrailSegmentsMap.client";
-import { DogPolicyBanner } from "@/components/trail/DogPolicyBanner";
-import { InsightCard } from "@/components/ui/InsightCard";
-import { MetricGrid, TrailIcons, DistanceIcon, LeashIcon } from "@/components/ui/TrailPictograms";
-import { TrailDashboard } from "@/components/trail/TrailDashboard";
+import { RulesAndSafetySection } from "@/components/trails/RulesAndSafetySection";
+import { getShadeShortLabel } from "@/components/trail/ShadeSection";
+import { TrailHero } from "@/components/trail/TrailHero";
+import { DogFitSnapshot } from "@/components/trail/DogFitSnapshot";
+import { SafetyConditionsSnapshot } from "@/components/trail/SafetyConditionsSnapshot";
 import { CollapsibleSectionHashOpener } from "@/components/ui/CollapsibleSectionHashOpener.client";
+import { TerrainComfortSection } from "@/components/trails/TerrainComfortSection";
+import { AccessEntrySection } from "@/components/trails/AccessEntrySection";
+import { MapSpatialSection } from "@/components/trails/MapSpatialSection";
+import { ExploreMoreSection } from "@/components/trails/ExploreMoreSection";
 import { formatValue, humanizeKey } from "@/lib/trailSystems/formatters";
 import { buildTrailSystemPageModel } from "@/lib/trailSystems/pageModel";
 import { normalizeHighlights } from "@/lib/highlights/highlights.utils";
-import { FaqSection } from "@/components/trail/FaqSection";
+import { isActionableExit, normalizeBailoutPoints } from "@/lib/bailouts/bailouts.utils";
+import { TrailFaqSection } from "@/components/trails/TrailFaqSection";
+import { normalizeVisibleFaqs } from "@/components/trails/TrailFaqSection";
+import { RelatedTrailsSection } from "@/components/trails/RelatedTrailsSection";
+import { DogSuitabilitySummary } from "@/components/trails/DogSuitabilitySummary";
+import { SectionNav } from "@/components/trail/SectionNav.client";
 import type { TrailHeadRow } from "@/lib/data/trailSystem";
+import { canonicalTrailSlug, normalizeState } from "@/lib/trailSlug";
+import { buildPageMetadata } from "@/lib/seo/metadata";
+import { JsonLd } from "@/components/seo/JsonLd";
+import {
+  breadcrumbSchema,
+  faqPageSchema,
+  trailPlaceSchema,
+  trailWebPageSchema,
+} from "@/lib/seo/schema";
+import {
+  accessFallbackCopy,
+  rulesSafetyFallbackCopy,
+  terrainFallbackCopy,
+} from "@/lib/seo/contentTemplates";
+import { normalizeEntityName, resolveStateName } from "@/lib/seo/entities";
+import { pickTrailOgImage } from "@/lib/seo/media";
+import {
+  evaluateTrailIndexability,
+  isWellFormedCityParam,
+  isWellFormedStateParam,
+} from "@/lib/seo/indexation";
+import { getTrailSystemsIndex } from "@/lib/data/trailSystemsIndex";
+import { trailDescription as trailMetaDescription, trailTitle as trailMetaTitle } from "@/lib/seo/ctr";
+export const revalidate = 900;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -163,54 +175,6 @@ function conditionLabel(
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
-function waterSummaryLabel(pct: number | null | undefined): string {
-  if (pct == null) return "Unknown";
-  if (pct < 0.2) return "None";
-  if (pct < 0.5) return "Some";
-  if (pct < 0.8) return "Moderate";
-  return "Good";
-}
-
-function lightingSummaryLabel(
-  litPercentKnown: number | null | undefined,
-  litYesSamples: number | null | undefined,
-  totalSamples: number | null | undefined
-): string {
-  if (litPercentKnown == null || litPercentKnown < 0.01) return "Unknown";
-  if (litYesSamples != null && totalSamples != null && totalSamples > 0) {
-    const pct = (litYesSamples / totalSamples) * 100;
-    if (pct < 10) return "None";
-    if (pct < 50) return "Partial";
-    return "Good";
-  }
-  return "Unknown";
-}
-
-function afterDarkSummaryLabel(
-  litPercentKnown: number | null | undefined,
-  litYesSamples: number | null | undefined,
-  totalSamples: number | null | undefined
-): string {
-  const lighting = lightingSummaryLabel(litPercentKnown, litYesSamples, totalSamples);
-  if (lighting === "Good") return "More ready";
-  if (lighting === "Partial") return "Some readiness";
-  if (lighting === "None") return "Low readiness";
-  return "Check details";
-}
-
-function swimSummaryLabel(
-  swimLikely: boolean | null | undefined,
-  swimAccessPointsCount: number | null | undefined
-): string {
-  const count = typeof swimAccessPointsCount === "number" && Number.isFinite(swimAccessPointsCount)
-    ? Math.round(swimAccessPointsCount)
-    : 0;
-  if (swimLikely === true) return "Likely";
-  if (count > 0) return "Possible";
-  if (swimLikely === false) return "Low";
-  return "Unknown";
-}
-
 function matchesSystem(
   head: TrailHeadRow,
   system: { systemRef?: string; extSystemRef?: string; slug?: string } | null
@@ -234,35 +198,175 @@ function matchesSystem(
   return false;
 }
 
+function trailCanonicalParts(system: Record<string, unknown>) {
+  const canonicalState = normalizeState(String(system.state ?? ""));
+  const canonicalCity = slugifyCity(String(system.city ?? ""));
+  const canonicalSlug = canonicalTrailSlug({
+    name: (system.name as string | null | undefined) ?? null,
+    id: (system.id as string | null | undefined) ?? null,
+    extSystemRef: (system.extSystemRef as string | null | undefined) ?? null,
+  });
+  return { canonicalState, canonicalCity, canonicalSlug };
+}
+
+function extractPhotoUri(value: unknown, depth = 0): string | null {
+  if (depth > 5) return null;
+  if (!value) return null;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nested = extractPhotoUri(item, depth + 1);
+      if (nested) return nested;
+    }
+    return null;
+  }
+  if (typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    const direct =
+      extractPhotoUri(record.googlePhotoUri, depth + 1) ??
+      extractPhotoUri(record.photoUrl, depth + 1) ??
+      extractPhotoUri(record.imageUrl, depth + 1);
+    if (direct) return direct;
+    for (const nested of Object.values(record)) {
+      const found = extractPhotoUri(nested, depth + 1);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+export async function generateStaticParams() {
+  const systems = await getTrailSystemsIndex();
+  return systems
+    .filter((s) => typeof s.lengthMilesTotal === "number" && s.lengthMilesTotal > 1)
+    .map((s) => ({
+      state: normalizeState(String(s.state ?? "")),
+      city: slugifyCity(String(s.city ?? "")),
+      trailSlug: canonicalTrailSlug({
+        name: s.name ?? null,
+        id: s.id ?? null,
+        extSystemRef: s.extSystemRef ?? null,
+      }),
+    }));
+}
+
 export async function generateMetadata({
   params,
 }: {
   params: Promise<{ state: string; city: string; trailSlug: string }>;
 }): Promise<Metadata> {
   const p = await params;
+  const state = safeDecodeURIComponent(p.state);
+  const city = safeDecodeURIComponent(p.city);
+  if (!isWellFormedStateParam(state) || !isWellFormedCityParam(city)) {
+    return buildPageMetadata({
+      title: "Trail not found",
+      description: "This trail URL is invalid or no longer available.",
+      pathname: `/${encodeURIComponent(state)}/${encodeURIComponent(city)}`,
+      index: false,
+    });
+  }
   const rawTrailSlug = safeDecodeURIComponent(p.trailSlug);
   const lookup = extractLookupFromTrailSlug(rawTrailSlug);
-  if (!lookup) return { title: "Trail not found" };
+  const fallbackPath = `/${encodeURIComponent(state)}/${encodeURIComponent(city)}/${encodeURIComponent(rawTrailSlug)}`;
+  if (!lookup) {
+    return buildPageMetadata({
+      title: "Trail not found",
+      description: "This trail URL is invalid or no longer available.",
+      pathname: fallbackPath,
+      index: false,
+    });
+  }
 
   const trail = await getTrailSystemForPage(lookup);
-  if (!trail) return { title: "Trail not found" };
+  if (!trail) {
+    return buildPageMetadata({
+      title: "Trail not found",
+      description: "This trail could not be found in the current directory.",
+      pathname: fallbackPath,
+      index: false,
+    });
+  }
 
-  return { title: String(trail.name ?? "Trail") };
+  const { canonicalState, canonicalCity, canonicalSlug } = trailCanonicalParts(trail as Record<string, unknown>);
+  const pathname = `/${encodeURIComponent(canonicalState)}/${encodeURIComponent(canonicalCity)}/${encodeURIComponent(canonicalSlug)}`;
+  const name = normalizeEntityName(trail.name, "Trail");
+  const lengthMiles =
+    typeof trail.lengthMilesTotal === "number" && Number.isFinite(trail.lengthMilesTotal)
+      ? trail.lengthMilesTotal
+      : null;
+  const trailEval = evaluateTrailIndexability({
+    name: trail.name,
+    city: trail.city,
+    state: trail.state,
+    lengthMilesTotal: trail.lengthMilesTotal,
+    dogsAllowed: trail.dogsAllowed,
+    leashPolicy: trail.leashPolicy,
+    shadeProxyPercent: trail.shadeProxyPercent,
+    waterNearPercent: trail.waterNearPercent,
+    swimLikely: trail.swimLikely,
+    surfaceSummary: trail.surfaceSummary,
+    elevationGainFt: trail.elevationGainFt,
+    parkingCount: trail.parkingCount,
+    trailheadPOIs: trail.trailheadPOIs,
+    highlights: trail.highlights,
+    faqs: trail.faqs,
+  });
+  const indexable =
+    Boolean(name && canonicalState && canonicalCity && lengthMiles != null) &&
+    trailEval.indexable;
+  const cityLabel = typeof trail.city === "string" ? trail.city : null;
+  const stateCode = typeof trail.state === "string" ? normalizeState(trail.state) : null;
+  const stateLabel = stateCode ? resolveStateName(stateCode) : null;
+  const ogImage = extractPhotoUri((trail as Record<string, unknown>).trailheadPOIs);
+  const ogImages = pickTrailOgImage({
+    trailheadPhotoUri: ogImage ?? null,
+    trailName: name,
+    cityName: cityLabel,
+    stateName: stateLabel,
+  });
+  const trailSurface =
+    typeof (trail.surfaceSummary as { dominant?: unknown } | null | undefined)?.dominant === "string"
+      ? String((trail.surfaceSummary as { dominant?: unknown }).dominant)
+      : null;
+
+  return buildPageMetadata({
+    title: trailMetaTitle({
+      trailName: name,
+      cityName: cityLabel,
+      stateCode,
+      leashPolicy: typeof trail.leashPolicy === "string" ? trail.leashPolicy : null,
+    }),
+    description: trailMetaDescription({
+      trailName: name,
+      cityName: cityLabel,
+      stateName: stateLabel,
+      distanceMiles: lengthMiles,
+      leashPolicy: typeof trail.leashPolicy === "string" ? trail.leashPolicy : null,
+      shadeClass: typeof trail.shadeClass === "string" ? trail.shadeClass : null,
+      waterNearPercent: typeof trail.waterNearPercent === "number" ? trail.waterNearPercent : null,
+      surface: trailSurface,
+      elevationGainFt: typeof trail.elevationGainFt === "number" ? trail.elevationGainFt : null,
+    }),
+    pathname,
+    index: indexable,
+    ogType: "article",
+    ogImages,
+  });
 }
 
 export default async function TrailDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ state: string; city: string; trailSlug: string }>;
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const [{ state, city, trailSlug }, search] = await Promise.all([
-    params,
-    searchParams ?? Promise.resolve({}),
-  ]);
+  const { state, city, trailSlug } = await params;
   const rawState = safeDecodeURIComponent(state);
   const rawCity = safeDecodeURIComponent(city);
+  if (!isWellFormedStateParam(rawState) || !isWellFormedCityParam(rawCity)) notFound();
   const rawTrailSlug = safeDecodeURIComponent(trailSlug);
 
   const lookup = extractLookupFromTrailSlug(rawTrailSlug);
@@ -281,23 +385,13 @@ export default async function TrailDetailPage({
   }
 
   if (!lookup) {
-    return (
-      <section>
-        <h1>Trail not found</h1>
-        <p>Invalid trail id (or id tail) in slug.</p>
-        <p>
-          <Link href={`/${encodeURIComponent(rawState)}/${encodeURIComponent(rawCity)}`}>
-            Back to trails
-          </Link>
-        </p>
-      </section>
-    );
+    notFound();
   }
 
   let data: Awaited<ReturnType<typeof getTrailSystemHeadsAndSegmentsForPage>>;
   try {
     data = await getTrailSystemHeadsAndSegmentsForPage(lookup);
-  } catch (err) {
+  } catch (err: unknown) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[trail page] getTrailSystemHeadsAndSegmentsForPage failed:", err);
     }
@@ -314,7 +408,8 @@ export default async function TrailDetailPage({
     );
   }
 
-  const { system, trailHeads, trailSegments, trailHeadSelection } = data;
+  const { system, trailHeads, trailHeadSelection } = data;
+  const mapSystemSlug = typeof system?.slug === "string" ? system.slug : null;
 
   if (process.env.PERF_LOG === "1") {
     console.log("[mud] trail fields", {
@@ -327,30 +422,21 @@ export default async function TrailDetailPage({
     });
   }
   if (!system) {
-    return (
-      <section>
-        <h1>Trail not found</h1>
-        <p>
-          No <code>trailSystems</code> record found for{" "}
-          <code>{lookup.kind === "id" ? "id" : "id tail"}</code>{" "}
-          <code>{lookup.value}</code>.
-        </p>
-        <p>
-          <Link href={`/${encodeURIComponent(rawState)}/${encodeURIComponent(rawCity)}`}>
-            Back to trails
-          </Link>
-        </p>
-      </section>
-    );
+    notFound();
+  }
+
+  const { canonicalState, canonicalCity, canonicalSlug } = trailCanonicalParts(
+    system as Record<string, unknown>
+  );
+  const canonicalPath = `/${encodeURIComponent(canonicalState)}/${encodeURIComponent(canonicalCity)}/${encodeURIComponent(canonicalSlug)}`;
+  if (rawState !== canonicalState || rawCity !== canonicalCity || rawTrailSlug !== canonicalSlug) {
+    permanentRedirect(canonicalPath);
   }
 
   const model = await timed("compute:buildTrailSystemPageModel (trail)", async () =>
     buildTrailSystemPageModel(system)
   );
-  const debugParam = (search as Record<string, string | string[] | undefined>).debug;
-  const debug =
-    (typeof debugParam === "string" && debugParam === "1") ||
-    process.env.NODE_ENV !== "production";
+  const debug = process.env.NODE_ENV !== "production";
   const totalGainFt = asFiniteNumber(system?.elevationGainFt);
   const maxFt = asFiniteNumber(system?.elevationMaxFt);
   const minFt = asFiniteNumber(system?.elevationMinFt);
@@ -397,6 +483,16 @@ export default async function TrailDetailPage({
   const { amenityPoints, hasCoordinateBearingAmenities } = extractAmenityPoints(system?.trailheadPOIs);
   const parkingPoints = extractParkingPoints(system?.trailheadPOIs);
   const highlights = normalizeHighlights(system?.highlights as any);
+  const bailoutSpots = normalizeBailoutPoints(system?.bailoutPoints as any)
+    .filter((spot) => isActionableExit(spot))
+    .map((spot) => ({
+      id: spot.id,
+      lat: spot.lat,
+      lng: spot.lng,
+      title: spot.title,
+      primaryKind: spot.primaryKind,
+      kinds: spot.kinds,
+    }));
   const safetyVets: Array<{ osmId: string; name: string | null; kind: string; lat: number; lon: number; distanceToCentroidMeters: number; tags: Record<string, any> }> = (() => {
     const safety = (system as any)?.safety;
     const vets = Array.isArray(safety?.nearbyVets) ? safety.nearbyVets : [];
@@ -411,19 +507,47 @@ export default async function TrailDetailPage({
   })();
 
   const heatRisk = (system as { heatRisk?: string } | null)?.heatRisk;
-  const shadeTierLabel = (shadeProxyPercent != null || (system?.shadeClass != null && String(system.shadeClass).trim() !== "")) ? getShadeTierLabel(system?.shadeClass as string | undefined, shadeProxyPercent) : null;
-  const crowdLabel = system?.crowdClass != null && typeof system.crowdClass === "string" ? conditionLabel(system.crowdClass, "—") : null;
+  const surfaceDominantRaw = (system?.surfaceSummary as { dominant?: string } | null | undefined)?.dominant ?? null;
+  const waterNearPctRaw = clampUnit(system?.waterNearPercent);
 
-  const effort = elevationProfile?.label ?? "Trail";
-  const route = routeTypeLabel?.toLowerCase() ?? "route";
-  const shade = getShadeShortLabel(system?.shadeClass as string | undefined, shadeProxyPercent);
-  const heatNote = heatRisk ? "; avoid midday in summer." : ".";
-  const computedQuickVerdict = `${effort} ${route} with ${shade}${heatNote}`.replace(/\s+\.$/, ".") || "See details below.";
+  function buildHeroVerdict(): string {
+    const miles = distanceMiles != null ? `${distanceMiles.toFixed(1)}-mile` : null;
+    const route = routeTypeLabel?.toLowerCase() ?? "trail";
+    const effortAdj: Record<string, string> = {
+      "Mostly Flat": "flat",
+      "Rolling Hills": "rolling",
+      "Challenging Climb": "hilly",
+      "Steep Workout": "strenuous",
+    };
+    const adj = elevationProfile?.label ? (effortAdj[elevationProfile.label] ?? null) : null;
+    const surfaceKey = (surfaceDominantRaw ?? "").toLowerCase();
+    const surfaceWord =
+      /asphalt|concrete|paved/.test(surfaceKey) ? "paved" :
+      /crush|gravel/.test(surfaceKey) ? "gravel and paved" :
+      /dirt|grass/.test(surfaceKey) ? "natural" :
+      null;
+    const leadParts = [adj, miles, route].filter(Boolean).join(" ");
+    const s1 = `A ${leadParts}${surfaceWord ? ` with ${surfaceWord} surfaces` : ""}.`;
 
-  const secondarySignals: Array<{ icon: ReactNode; label: string; value: string }> = [];
-  if (heatRisk) secondarySignals.push({ icon: <Sun size={14} aria-hidden />, label: "Heat", value: conditionLabel(heatRisk, "—") });
-  if (shadeTierLabel) secondarySignals.push({ icon: <TreePine size={14} aria-hidden />, label: "Shade", value: shadeTierLabel });
-  if (crowdLabel) secondarySignals.push({ icon: <Users size={14} aria-hidden />, label: "Crowd", value: crowdLabel });
+    const shadeLevel = (system?.shadeClass as string | null | undefined ?? "").toLowerCase();
+    const shadePct = shadeProxyPercent != null ? Math.round(shadeProxyPercent * 100) : null;
+    const shadeNote =
+      shadeLevel === "high" ? "Good shade throughout" :
+      shadeLevel === "medium" && shadePct != null ? `Partial shade (${shadePct}% coverage)` :
+      shadeLevel === "low" ? "Mostly sun-exposed" :
+      null;
+    const waterNote =
+      (waterNearPctRaw ?? 0) >= 0.6 ? "water access along most of the route" :
+      (waterNearPctRaw ?? 0) >= 0.3 ? "some water access" :
+      null;
+    const timing = heatRisk ? "best in the morning or evening during summer" : null;
+    const s2Parts = [shadeNote, waterNote, timing].filter(Boolean);
+    const s2 = s2Parts.length > 0 ? s2Parts.join("; ") + "." : null;
+
+    return [s1, s2].filter(Boolean).join(" ");
+  }
+
+  const computedQuickVerdict = buildHeroVerdict();
 
   const matchedHeadsForEntry = trailHeads.filter((th) => matchesSystem(th, system));
   const primaryHead = matchedHeadsForEntry.find((th) => th.isPrimary) ?? matchedHeadsForEntry[0];
@@ -432,27 +556,6 @@ export default async function TrailDetailPage({
 
   const winterClass = (system?.winterClass as string | null | undefined)?.trim().toLowerCase();
   const winterNote = winterClass === "high" || winterClass === "medium";
-  const litKnownSamplesValue =
-    typeof system?.litKnownSamples === "number" && Number.isFinite(system.litKnownSamples)
-      ? system.litKnownSamples
-      : null;
-  const litYesSamplesValue =
-    typeof system?.litYesSamples === "number" && Number.isFinite(system.litYesSamples)
-      ? system.litYesSamples
-      : null;
-  const litPercentKnownValue =
-    typeof system?.litPercentKnown === "number" && Number.isFinite(system.litPercentKnown)
-      ? system.litPercentKnown
-      : null;
-  const totalSampleCountValue =
-    typeof system?.totalSampleCount === "number" && Number.isFinite(system.totalSampleCount)
-      ? system.totalSampleCount
-      : null;
-  const hasLightingReported =
-    (litKnownSamplesValue != null && litKnownSamplesValue > 0) ||
-    (totalSampleCountValue != null &&
-      totalSampleCountValue > 0 &&
-      (litYesSamplesValue != null || litPercentKnownValue != null));
   let computedSeasonGuidance: string;
   if (heatRisk && winterNote) computedSeasonGuidance = "Best in spring and fall; avoid midday in summer.";
   else if (heatRisk) computedSeasonGuidance = "Avoid midday in summer.";
@@ -486,162 +589,152 @@ export default async function TrailDetailPage({
 
   const seoText = (text: string | undefined) =>
     text && text !== "Unknown based on available data." ? text : null;
+  const dominantSurfaceLabel =
+    surfaceDominantRaw && typeof surfaceDominantRaw === "string"
+      ? surfaceDominantRaw.charAt(0).toUpperCase() + surfaceDominantRaw.slice(1).toLowerCase()
+      : null;
+  const introSummary = trailMetaDescription({
+    trailName: model.identity.name ?? "Trail",
+    cityName: model.identity.city ?? null,
+    stateName: model.identity.state ?? null,
+    distanceMiles,
+    leashPolicy: typeof system?.leashPolicy === "string" ? system.leashPolicy : null,
+    shadeClass: typeof system?.shadeClass === "string" ? system.shadeClass : null,
+    waterNearPercent: waterNearPctRaw,
+    surface: dominantSurfaceLabel,
+    elevationGainFt: totalGainFt,
+  });
+  const terrainFallback = terrainFallbackCopy({
+    distanceMiles,
+    elevationGainFt: totalGainFt,
+    surface: dominantSurfaceLabel,
+    shadeClass: typeof system?.shadeClass === "string" ? system.shadeClass : null,
+    waterNearPercent: waterNearPctRaw,
+  });
+  const accessFallback = accessFallbackCopy({
+    trailHeadCount: trailHeads.length,
+    parkingCount:
+      typeof (system as any)?.parkingCount === "number" && Number.isFinite((system as any)?.parkingCount)
+        ? (system as any).parkingCount
+        : null,
+    parkingFeeKnown:
+      typeof (system as any)?.parkingFeeKnown === "boolean"
+        ? (system as any).parkingFeeKnown
+        : null,
+  });
+  const rulesFallback = rulesSafetyFallbackCopy({
+    hazardsClass: typeof system?.hazardsClass === "string" ? system.hazardsClass : null,
+    vetCount: safetyVets.length,
+  });
+  const schemaDescription = introSummary;
+  const cityPath = `/${encodeURIComponent(canonicalState)}/${encodeURIComponent(canonicalCity)}`;
+  const canonicalStateName = resolveStateName(canonicalState);
+  const trailName = normalizeEntityName(model.identity.name, "Trail");
+  const cityName = normalizeEntityName(model.identity.city ?? canonicalCity, "Unknown city");
+  const faqItems = normalizeVisibleFaqs(
+    (seo?.faqs && seo.faqs.length > 0)
+      ? seo.faqs
+      : Array.isArray(system?.faqs) && (system.faqs as unknown[]).length > 0
+        ? system.faqs
+        : []
+  );
+  const faqSchemaNode = faqPageSchema({
+    path: canonicalPath,
+    items: faqItems.map((faq) => ({ question: faq.q, answer: faq.a })),
+  });
+  const centroid = Array.isArray((system as any)?.centroid) ? (system as any).centroid : null;
+  const geo =
+    Array.isArray(centroid) &&
+    centroid.length >= 2 &&
+    typeof centroid[0] === "number" &&
+    typeof centroid[1] === "number"
+      ? { lat: centroid[1], lon: centroid[0] }
+      : null;
+  const trailSchemaNodes: Array<Record<string, unknown>> = [
+    breadcrumbSchema([
+      { name: "Home", path: "/" },
+      { name: canonicalStateName, path: `/${encodeURIComponent(canonicalState)}` },
+      { name: cityName, path: cityPath },
+      { name: trailName, path: canonicalPath },
+    ]),
+    trailWebPageSchema({
+      name: `${trailName} trail guide`,
+      description: schemaDescription,
+      path: canonicalPath,
+    }),
+    trailPlaceSchema({
+      name: trailName,
+      description: schemaDescription,
+      path: canonicalPath,
+      city: cityName,
+      state: canonicalStateName,
+      geo,
+    }),
+  ];
+  if (faqSchemaNode) trailSchemaNodes.push(faqSchemaNode);
 
   return (
-    <div style={{ width: "100%" }}>
+    <div className="trail-page-sections" style={{ width: "100%", display: "flex", flexDirection: "column" }}>
       <CollapsibleSectionHashOpener />
-      <p style={{ marginBottom: "1rem", fontSize: "0.875rem" }}>
-        <Link href={`/${encodeURIComponent(rawState)}/${encodeURIComponent(rawCity)}`} style={{ color: "#64748b", textDecoration: "none" }}>
-          ← Back to trails
+      <JsonLd
+        id="trail-schema"
+        data={trailSchemaNodes}
+      />
+      <nav aria-label="Breadcrumb">
+        <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", gap: "0.4rem", fontSize: "0.8125rem", color: "#94a3b8", flexWrap: "wrap" }}>
+          <li>
+            <Link href="/" style={{ color: "#94a3b8", textDecoration: "none" }}>Home</Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link href={`/${encodeURIComponent(canonicalState)}`} style={{ color: "#94a3b8", textDecoration: "none" }}>
+              {canonicalStateName}
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li>
+            <Link href={cityPath} className="trail-back-link" style={{ color: "#94a3b8", textDecoration: "none", fontSize: "0.8125rem", fontWeight: 500, letterSpacing: "0.01em" }}>
+              {cityName}
+            </Link>
+          </li>
+        </ol>
+      </nav>
+
+      {/* ── Utility Hero ── */}
+      <TrailHero
+        name={model.identity.name ?? "Trail"}
+        city={model.identity.city ?? null}
+        state={model.identity.state ?? null}
+        county={model.identity.county ?? null}
+        distanceMiles={distanceMiles}
+        routeTypeLabel={routeTypeLabel}
+        verdict={computedQuickVerdict}
+        dogsAllowed={typeof system?.dogsAllowed === "string" ? system.dogsAllowed : null}
+        leashPolicy={typeof system?.leashPolicy === "string" ? system.leashPolicy : null}
+        effortLabel={elevationProfile?.label ?? null}
+        shadeClass={typeof system?.shadeClass === "string" ? system.shadeClass : null}
+        shadeProxyPercent={shadeProxyPercent}
+        hasCertifiedPolicy={hasCertifiedPolicy}
+        policySourceTitle={(system as { policySourceTitle?: string })?.policySourceTitle ?? null}
+        policySourceUrl={typeof system?.policySourceUrl === "string" ? system.policySourceUrl : null}
+        bestEntryName={bestEntryName}
+        bestEntryUrl={bestEntryUrl}
+        seasonGuidance={computedSeasonGuidance}
+      />
+
+      <p style={{ margin: "0.75rem 0 0", color: "#64748b", fontSize: "0.9rem", lineHeight: 1.6 }}>
+        {introSummary} Looking for more options in{" "}
+        <Link href={cityPath} style={{ color: "#166534", textDecoration: "none", fontWeight: 600 }}>
+          {model.identity.city ?? canonicalCity} dog-friendly trails
         </Link>
+        {" "}or across{" "}
+        <Link href={`/${encodeURIComponent(canonicalState)}`} style={{ color: "#166534", textDecoration: "none", fontWeight: 600 }}>
+          dog-friendly trails across {canonicalStateName}
+        </Link>
+        ? Use the sections below for dog policy, access points, shade/heat, water, terrain, and safety.
       </p>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap", marginBottom: "0.125rem" }}>
-        <h1 style={{ fontSize: "1.75rem", fontWeight: 700, color: "#0f172a", margin: 0, lineHeight: 1.3 }}>
-          {model.identity.name || "Trail system"}
-        </h1>
-        {hasCertifiedPolicy && (
-          <span className="certified-badge-by-title" style={{ display: "inline-flex", alignItems: "center", gap: "0.5rem" }} title="Certified dog policy">
-            <Medal size={32} aria-hidden style={{ flexShrink: 0, color: "#b45309" }} />
-            <span className="certified-badge-by-title-label">Certified dog policy</span>
-          </span>
-        )}
-      </div>
-      {headerMeta ? <p style={{ marginTop: "0.5rem", fontSize: "0.9375rem", color: "#64748b" }}>{headerMeta}</p> : null}
-
-      <p style={{ marginTop: "0.75rem", fontSize: "1.125rem", fontWeight: 500, color: "#1e293b", maxWidth: "48rem", lineHeight: 1.4 }}>
-        {seoText(seo?.sections?.intro?.a) ?? computedQuickVerdict}
-      </p>
-
-      {/* Hero stat strip */}
-      {(() => {
-        const leashRaw = system?.leashPolicy != null ? String(system.leashPolicy).trim() : "";
-        const dogsRaw = system?.dogsAllowed != null ? String(system.dogsAllowed).trim() : "";
-        const isOffLeash = /off[- ]?leash|leash[- ]?optional/i.test(leashRaw);
-        const isOnLeash = /on[- ]?leash|required/i.test(leashRaw);
-        const leashColor = isOffLeash ? "#15803d" : isOnLeash ? "#d97706" : "#64748b";
-        const leashBg = isOffLeash ? "#dcfce7" : isOnLeash ? "#fef3c7" : "#f1f5f9";
-        const dogsOk = /yes|allowed/i.test(dogsRaw);
-        const dogsBanned = /no|not allowed|prohibited/i.test(dogsRaw);
-        const dogsColor = dogsOk ? "#15803d" : dogsBanned ? "#dc2626" : "#64748b";
-        const dogsBg = dogsOk ? "#dcfce7" : dogsBanned ? "#fee2e2" : "#f1f5f9";
-
-        const stats = [
-          ...(headerDistance ? [{
-            icon: <DistanceIcon size={20} />,
-            label: "Distance",
-            value: headerDistance,
-            bg: "#f1f5f9",
-            color: "#0f172a",
-          }] : []),
-          ...(elevationProfile ? [{
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 3l4 8 5-5 5 15H2L8 3z" />
-              </svg>
-            ),
-            label: "Effort",
-            value: elevationProfile.label,
-            bg: "#f1f5f9",
-            color: "#0f172a",
-          }] : []),
-          ...(dogsRaw ? [{
-            icon: (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <ellipse cx="6.5" cy="3.5" rx="1.5" ry="2" />
-                <ellipse cx="11" cy="2.5" rx="1.5" ry="2" />
-                <ellipse cx="15.5" cy="3.5" rx="1.5" ry="2" />
-                <ellipse cx="19" cy="7" rx="1.5" ry="2" />
-                <path d="M12 8c-3.5 0-7 2.5-7 6.5 0 2.5 1.5 5 4 5.5.8.2 2 .5 3 .5s2.2-.3 3-.5c2.5-.5 4-3 4-5.5C19 10.5 15.5 8 12 8z" />
-              </svg>
-            ),
-            label: "Dogs",
-            value: dogsRaw.charAt(0).toUpperCase() + dogsRaw.slice(1).toLowerCase(),
-            bg: dogsBg,
-            color: dogsColor,
-          }] : []),
-          ...(leashRaw ? [{
-            icon: <LeashIcon size={20} />,
-            label: "Leash",
-            value: leashRaw.charAt(0).toUpperCase() + leashRaw.slice(1).toLowerCase(),
-            bg: leashBg,
-            color: leashColor,
-          }] : []),
-        ];
-
-        if (stats.length === 0) return null;
-
-        return (
-          <div style={{
-            marginTop: "1rem",
-            display: "flex",
-            flexWrap: "wrap",
-            gap: "0.625rem",
-          }}>
-            {stats.map((s, i) => (
-              <div key={i} style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                backgroundColor: s.bg,
-                borderRadius: "0.625rem",
-                padding: "0.5rem 0.875rem",
-                border: "1px solid #e2e8f0",
-              }}>
-                <span style={{ color: s.color, display: "flex", alignItems: "center" }} aria-hidden>
-                  {s.icon}
-                </span>
-                <div>
-                  <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 500, letterSpacing: "0.04em", textTransform: "uppercase" }}>{s.label}</div>
-                  <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: s.color, lineHeight: 1.2 }}>{s.value}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        );
-      })()}
-
-      {secondarySignals.length > 0 && (
-        <div style={{ marginTop: "0.75rem", display: "flex", flexWrap: "wrap", gap: "0.5rem" }}>
-          {secondarySignals.map((sig, i) => (
-            <span
-              key={i}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                borderRadius: "9999px",
-                backgroundColor: "#f1f5f9",
-                color: "#334155",
-                padding: "0.375rem 0.75rem",
-                fontSize: "0.75rem",
-                fontWeight: 500,
-              }}
-            >
-              <span style={{ display: "flex", alignItems: "center", color: "#475569" }}>{sig.icon}</span>
-              <span>{sig.label}:</span>
-              <span>{sig.value}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
-      <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#475569", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <Navigation size={16} aria-hidden style={{ flexShrink: 0 }} />
-        <span>Best entry:</span>
-        {bestEntryName ? (
-          <a href={bestEntryUrl} target={bestEntryUrl.startsWith("http") ? "_blank" : undefined} rel={bestEntryUrl.startsWith("http") ? "noreferrer" : undefined} style={{ textDecoration: "underline", color: "#475569" }}>
-            {bestEntryName}
-          </a>
-        ) : (
-          <span>See trailheads below</span>
-        )}
-      </div>
-
-      <div style={{ marginTop: "0.25rem", fontSize: "0.875rem", color: "#475569", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <Calendar size={16} aria-hidden style={{ flexShrink: 0 }} />
-        <span>{computedSeasonGuidance}</span>
-      </div>
+      <SectionNav />
 
       {debug && model.qa.total > 0 && (
         <section style={{ marginTop: "1.25rem" }}>
@@ -685,8 +778,83 @@ export default async function TrailDetailPage({
         </section>
       )}
 
-      <TrailSegmentsMapClient
-        segments={trailSegments}
+      {/* ── Dog Fit Snapshot ── */}
+      <div id="dogfit">
+        <DogFitSnapshot
+          leashDetails={(system as { leashDetails?: string })?.leashDetails ?? null}
+          system={system}
+        />
+      </div>
+
+      {/* ── Dog Suitability Summary ── */}
+      <DogSuitabilitySummary system={system} />
+
+      {/* ── Safety & Conditions Snapshot ── */}
+      <div id="safety">
+        <SafetyConditionsSnapshot
+          hazardsClass={typeof system?.hazardsClass === "string" ? system.hazardsClass : null}
+          hazardsReasons={system?.hazardsReasons as string | string[] | null | undefined}
+          hazards={system?.hazards as Record<string, unknown> | null | undefined}
+          shadeClass={typeof system?.shadeClass === "string" ? system.shadeClass : null}
+          shadeProxyPercent={shadeProxyPercent}
+          heatRisk={heatRisk ?? null}
+          crowdClass={typeof system?.crowdClass === "string" ? system.crowdClass : null}
+          crowdReasons={system?.crowdReasons as string | string[] | null | undefined}
+          safetyVets={safetyVets}
+          winterClass={typeof system?.winterClass === "string" ? system.winterClass : null}
+          mudRisk={typeof system?.mudRisk === "string" ? system.mudRisk : null}
+        />
+      </div>
+
+      {/* ── Terrain & Comfort ── */}
+      <TerrainComfortSection
+        elevationProfile={elevationProfile}
+        elevationProfilePoints={Array.isArray(system?.elevationProfile) ? system.elevationProfile as { d: number; e: number }[] : null}
+        totalGainFt={totalGainFt}
+        maxFt={maxFt}
+        minFt={minFt}
+        lengthMiles={distanceMiles}
+        gradP50={system?.gradeP50 as number | null}
+        gradP90={system?.gradeP90 as number | null}
+        widthSummary={system?.widthSummary as { min?: number; max?: number; p50?: number; p90?: number; unknownPct?: number } | null}
+        surfaceSummary={system?.surfaceSummary}
+        surfaceBreakdown={system?.surfaceBreakdown}
+        roughnessRisk={system?.roughnessRisk as string | undefined}
+        roughnessRiskScore={(system as any)?.roughnessRiskScore as number | undefined}
+        roughnessRiskKnownSamples={(system as any)?.roughnessRiskKnownSamples as number | undefined}
+        surfaceProfilePoints={Array.isArray(system?.surfaceProfile) ? system.surfaceProfile as { d: number; surface: string }[] : null}
+        shadeClass={typeof system?.shadeClass === "string" ? system.shadeClass : null}
+        shadeProxyPercent={shadeProxyPercent}
+        shadeProxyScore={system?.shadeProxyScore as number | undefined}
+        shadeSources={system?.shadeSources}
+        shadeProfilePoints={Array.isArray(system?.shadeProfile) ? system.shadeProfile as { d: number; shade: number }[] : null}
+        waterNearScore={system?.waterNearScore as number | undefined}
+        waterNearPercent={system?.waterNearPercent as number | undefined}
+        waterTypesNearby={system?.waterTypesNearby as string[] | string | undefined}
+        swimLikely={system?.swimLikely as boolean | undefined}
+        waterProfilePoints={Array.isArray(system?.waterProfile) ? system.waterProfile as { d: number; type: string }[] : null}
+        lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
+        seoTerrain={seoText(seo?.sections?.difficultyElevation?.a) ?? terrainFallback.terrain}
+        seoSurface={seoText(seo?.sections?.surfacePaws?.a) ?? terrainFallback.surface}
+        seoShade={seoText(seo?.sections?.shadeHeat?.a) ?? terrainFallback.shade}
+        seoWater={seoText(seo?.sections?.water?.a) ?? terrainFallback.water}
+      />
+
+      {/* ── Access & Entry ── */}
+      <AccessEntrySection
+        system={system}
+        trailHeads={trailHeads}
+        parkingCapacityEstimate={system?.parkingCapacityEstimate as number | null}
+        parkingCount={system?.parkingCount as number | null}
+        parkingFeeKnown={system?.parkingFeeKnown as boolean | null}
+        amenityPoints={Array.isArray(system?.amenityPoints) ? system.amenityPoints as { d: number; kind: string }[] : null}
+        lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
+        seoAmenities={seoText(seo?.sections?.amenities?.a) ?? accessFallback}
+      />
+
+      {/* ── Map & Route ── */}
+      <MapSpatialSection
+        systemSlug={mapSystemSlug}
         trailHeads={trailHeads}
         trailHeadSelection={trailHeadSelection}
         amenityPoints={amenityPoints}
@@ -694,305 +862,37 @@ export default async function TrailDetailPage({
         parkingPoints={parkingPoints}
         highlights={highlights}
         vets={safetyVets}
+        bailoutSpots={bailoutSpots}
+        trailName={model.identity.name ?? null}
+        cityName={model.identity.city ?? null}
+        stateName={canonicalStateName}
       />
 
-      <DogPolicyBanner
-        dogsAllowed={typeof system?.dogsAllowed === "string" ? system.dogsAllowed : null}
-        leashPolicy={typeof system?.leashPolicy === "string" ? system.leashPolicy : null}
-        leashDetails={(system as { leashDetails?: string })?.leashDetails ?? null}
-        policySourceUrl={typeof system?.policySourceUrl === "string" ? system.policySourceUrl : null}
-        policySourceTitle={(system as { policySourceTitle?: string })?.policySourceTitle ?? null}
+      {/* ── Explore More ── */}
+      <ExploreMoreSection
+        highlightsRaw={system?.highlights}
+        highlightCount={highlights.length}
+        highlightPoints={Array.isArray(system?.highlightPoints) ? system.highlightPoints as { d: number; kind: string; name: string | null; distM?: number }[] : null}
+        lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
+        bailoutPointsRaw={system?.bailoutPoints as any}
+        bailoutClass={typeof system?.bailoutClass === "string" ? system.bailoutClass : null}
+        bailoutScore={typeof system?.bailoutScore === "number" ? system.bailoutScore : null}
+        bailoutReasons={system?.bailoutReasons as string[] | string | null}
       />
 
-      <InsightCard
-        id="trailheads"
-        title="Trailheads"
-        variant="planning"
-        layout="wide"
-        childrenInline
-      >
-        <TrailheadsSection system={system} trailHeads={trailHeads} />
-      </InsightCard>
-
-      <TrailDashboard>
-        <InsightCard
-          id="dog-fit"
-          title="Dog Fit"
-          variant="dog"
-          layout="wide"
-          childrenInline
-        >
-          <DogTypesSection system={system} />
-        </InsightCard>
-
-        {seoText(seo?.sections?.difficultyElevation?.a) && (
-          <p style={{ margin: "0 0 0.5rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-            {seo!.sections.difficultyElevation!.a}
-          </p>
-        )}
-        <ElevationWidthSection
-          elevationProfile={elevationProfile}
-          elevationProfilePoints={Array.isArray(system?.elevationProfile) ? system.elevationProfile as { d: number; e: number }[] : null}
-          totalGainFt={totalGainFt}
-          maxFt={maxFt}
-          minFt={minFt}
-          lengthMiles={distanceMiles}
-          gradP50={system?.gradeP50 as number | null}
-          gradP90={system?.gradeP90 as number | null}
-          widthSummary={system?.widthSummary as { min?: number; max?: number; p50?: number; p90?: number; unknownPct?: number } | null}
-        />
-
-        <InsightCard
-          id="surface"
-          title="Surface"
-          variant="conditions"
-          layout="wide"
-          childrenInline
-        >
-          {seoText(seo?.sections?.surfacePaws?.a) && (
-            <p style={{ margin: "0 0 0.75rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-              {seo!.sections.surfacePaws!.a}
-            </p>
-          )}
-          <SurfaceSection
-            surfaceSummary={system?.surfaceSummary}
-            surfaceBreakdown={system?.surfaceBreakdown}
-            roughnessRisk={system?.roughnessRisk as string | undefined}
-            roughnessRiskScore={(system as any)?.roughnessRiskScore as number | undefined}
-            roughnessRiskKnownSamples={(system as any)?.roughnessRiskKnownSamples as number | undefined}
-            surfaceProfilePoints={Array.isArray(system?.surfaceProfile) ? system.surfaceProfile as { d: number; surface: string }[] : null}
-            lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
-          />
-        </InsightCard>
-
-        <InsightCard
-          id="shade"
-          title="Shade"
-          variant="conditions"
-          layout="wide"
-          childrenInline
-        >
-          {seoText(seo?.sections?.shadeHeat?.a) && (
-            <p style={{ margin: "0 0 0.75rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-              {seo!.sections.shadeHeat!.a}
-            </p>
-          )}
-          <ShadeSection
-            shadeClass={system?.shadeClass as string | undefined}
-            shadeLastComputedAt={system?.shadeLastComputedAt as number | string | undefined}
-            shadeProxyPercent={system?.shadeProxyPercent as number | undefined}
-            shadeProxyScore={system?.shadeProxyScore as number | undefined}
-            shadeSources={system?.shadeSources}
-            shadeProfilePoints={Array.isArray(system?.shadeProfile) ? system.shadeProfile as { d: number; shade: number }[] : null}
-            lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
-          />
-        </InsightCard>
-
-        <InsightCard
-          id="water"
-          title="Water"
-          variant="conditions"
-          layout="wide"
-          childrenInline
-        >
-          {seoText(seo?.sections?.water?.a) && (
-            <p style={{ margin: "0 0 0.75rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-              {seo!.sections.water!.a}
-            </p>
-          )}
-          <WaterSection
-            waterNearScore={system?.waterNearScore as number | undefined}
-            waterNearPercent={system?.waterNearPercent as number | undefined}
-            waterTypesNearby={system?.waterTypesNearby as string[] | string | undefined}
-            swimLikely={system?.swimLikely as boolean | undefined}
-            waterProfilePoints={Array.isArray(system?.waterProfile) ? system.waterProfile as { d: number; type: string }[] : null}
-            lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
-          />
-        </InsightCard>
-
-        <InsightCard
-          id="conditions"
-          title="Conditions"
-          variant="conditions"
-          layout="wide"
-          childrenInline
-          headline={
-            shadeProxyPercent != null && shadeProxyPercent < 0.5
-              ? "Most sections exposed; bring water."
-              : "Mud, lighting, winter, and after-dark details below."
-          }
-          summaryContent={
-            <MetricGrid
-              wide
-              items={[
-                { icon: TrailIcons.lighting, label: "After Dark", value: afterDarkSummaryLabel(system?.litPercentKnown as number, system?.litYesSamples as number, system?.totalSampleCount as number), tone: "neutral" },
-                { icon: TrailIcons.crowd, label: "Crowd", value: typeof system?.crowdClass === "string" ? conditionLabel(system.crowdClass, "—") : "—", tone: "neutral" },
-                { icon: TrailIcons.water, label: "Swim", value: swimSummaryLabel(system?.swimLikely as boolean | null | undefined, system?.swimAccessPointsCount as number | null | undefined), tone: "neutral" },
-                { icon: TrailIcons.mud, label: "Mud", value: conditionLabel(system?.mudRisk as string, "—"), tone: "neutral" },
-                { icon: TrailIcons.winter, label: "Winter", value: conditionLabel(system?.winterClass as string, "Unknown"), tone: "neutral" },
-                ...(hasLightingReported
-                  ? [{
-                      icon: TrailIcons.lighting,
-                      label: "Lighting",
-                      value: lightingSummaryLabel(system?.litPercentKnown as number, system?.litYesSamples as number, system?.totalSampleCount as number),
-                      tone: "neutral" as const,
-                    }]
-                  : []),
-              ]}
-            />
-          }
-        >
-          {seoText(seo?.sections?.crowd?.a) && (
-            <p style={{ margin: "0 0 0.75rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-              {seo!.sections.crowd!.a}
-            </p>
-          )}
-          <AfterDarkSection
-            litKnownSamples={system?.litKnownSamples as number | undefined}
-            litYesSamples={system?.litYesSamples as number | undefined}
-            litPercentKnown={system?.litPercentKnown as number | undefined}
-            totalSampleCount={system?.totalSampleCount as number | undefined}
-            accessRules={system?.accessRules}
-            surfaceSummary={system?.surfaceSummary}
-            surfaceBreakdown={system?.surfaceBreakdown}
-            hazardPoints={system?.hazardPoints}
-            waterNearPercent={system?.waterNearPercent as number | undefined}
-            swimLikely={system?.swimLikely as boolean | string | undefined}
-          />
-          <CrowdSection
-            crowdClass={system?.crowdClass as string | null}
-            crowdLastComputedAt={system?.crowdLastComputedAt as number | string | null}
-            crowdProxyScore={system?.crowdProxyScore as number | null}
-            crowdReasons={system?.crowdReasons as string | string[] | null | undefined}
-            crowdSignals={system?.crowdSignals as Record<string, unknown> | null | undefined}
-          />
-          <SwimSection
-            swimLikely={system?.swimLikely as boolean | null}
-            swimAccessPointsCount={system?.swimAccessPointsCount as number | null}
-            swimAccessPointsByType={system?.swimAccessPointsByType as Record<string, number> | null}
-            swimAccessPoints={system?.swimAccessPoints as any[] | null}
-          />
-          <MudRiskSection
-            mudLastComputedAt={system?.mudLastComputedAt as number | string | undefined}
-            mudRisk={system?.mudRisk as string | undefined}
-            mudRiskReason={system?.mudRiskReason as string | undefined}
-            mudRiskScore={system?.mudRiskScore as number | undefined}
-            mudRiskKnownSamples={(system as any)?.mudRiskKnownSamples as number | undefined}
-            mudRiskReasons={(system as any)?.mudRiskReasons as string[] | string | undefined}
-            surfaceSummary={system?.surfaceSummary}
-            surfaceBreakdown={system?.surfaceBreakdown}
-            waterNearPercent={system?.waterNearPercent as number | undefined}
-          />
-          <WinterSection
-            winterClass={system?.winterClass as string | null}
-            winterScore={system?.winterScore as number | null}
-            winterLikelyMaintained={system?.winterLikelyMaintained as boolean | null}
-            winterReasons={system?.winterReasons as string[] | string | null}
-            winterLastComputedAt={system?.winterLastComputedAt as number | string | null}
-          />
-          {hasLightingReported && (
-            <LightingSection
-              litKnownSamples={system?.litKnownSamples as number | undefined}
-              litYesSamples={system?.litYesSamples as number | undefined}
-              litPercentKnown={system?.litPercentKnown as number | undefined}
-              totalSampleCount={system?.totalSampleCount as number | undefined}
-            />
-          )}
-        </InsightCard>
-
-        <InsightCard
-          id="planning"
-          title="Planning & Entry"
-          variant="planning"
-          layout="wide"
-          defaultOpen
-        >
-          {seoText(seo?.sections?.amenities?.a) && (
-            <p style={{ margin: "0 0 0.75rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-              {seo!.sections.amenities!.a}
-            </p>
-          )}
-          <AmenitiesGrid amenitiesCounts={system?.amenitiesCounts} />
-          <RouteAmenitiesSection
-            trailheadPOIs={system?.trailheadPOIs}
-            amenityPoints={Array.isArray(system?.amenityPoints) ? system.amenityPoints as { d: number; kind: string }[] : null}
-            lengthMilesTotal={system?.lengthMilesTotal as number | undefined}
-          />
-          <ParkingSection
-            parkingCapacityEstimate={system?.parkingCapacityEstimate as number | null}
-            parkingCount={system?.parkingCount as number | null}
-            parkingFeeKnown={system?.parkingFeeKnown as boolean | null}
-          />
-        </InsightCard>
-
-        <InsightCard
-          id="highlights"
-          title="Highlights"
-          variant="highlights"
-          layout="wide"
-          childrenInline
-          dividerBeforeDetails
-          defaultOpen
-          headline={
-            (() => {
-              const list = normalizeHighlights(system?.highlights as any);
-              return list.length === 0 ? "No highlights mapped yet." : `${list.length} highlight${list.length === 1 ? "" : "s"} on or near the trail.`;
-            })()
-          }
-        >
-          {Array.isArray(system?.highlightPoints) && (system.highlightPoints as any[]).length >= 1 && (
-            <div style={{ marginBottom: "0.75rem" }}>
-              <div style={{
-                fontSize: "0.72rem",
-                fontWeight: 700,
-                letterSpacing: "0.05em",
-                textTransform: "uppercase" as const,
-                color: "#6b7280",
-                marginBottom: "0.35rem",
-              }}>
-                Highlights along the trail
-              </div>
-              <HighlightProfileChart
-                points={system.highlightPoints as { d: number; kind: string; name: string | null; distM?: number }[]}
-                totalMiles={system?.lengthMilesTotal as number | undefined}
-              />
-            </div>
-          )}
-          <HikeHighlightsSection highlightsRaw={system?.highlights as any} />
-        </InsightCard>
-
-      </TrailDashboard>
-
-      {seoText(seo?.sections?.safetyServices?.a) && (
-        <p style={{ margin: "0 0 0.5rem", fontSize: "0.9rem", color: "#374151", lineHeight: 1.6 }}>
-          {seo!.sections.safetyServices!.a}
-        </p>
-      )}
       <RulesAndSafetySection
         system={system as Record<string, unknown> | null}
         city={model.identity.city}
         state={model.identity.state}
+        introText={rulesFallback}
       />
 
-      {(() => {
-        const faqItems = (seo?.faqs && seo.faqs.length > 0)
-          ? seo.faqs
-          : Array.isArray(system?.faqs) && (system.faqs as unknown[]).length > 0
-            ? system.faqs as any[]
-            : null;
-        if (!faqItems) return null;
-        return (
-          <InsightCard
-            id="faqs"
-            title="Frequently Asked Questions"
-            variant="dog"
-            headline="Common questions about dogs on this trail."
-            childrenInline
-          >
-            <FaqSection faqs={faqItems} />
-          </InsightCard>
-        );
-      })()}
+      <TrailFaqSection faqs={faqItems} />
+
+      <RelatedTrailsSection
+        city={model.identity.city ?? ""}
+        state={model.identity.state ?? ""}
+      />
     </div>
   );
 }

@@ -75,10 +75,10 @@ function primaryConcerns(counts: ReturnType<typeof getHazardCounts>): string[] {
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.7rem",
   } as const,
   headerRow: {
     display: "flex",
@@ -87,78 +87,105 @@ const S = {
     gap: "0.75rem",
     flexWrap: "wrap" as const,
   } as const,
-  title: { margin: 0, fontSize: "1.2rem", fontWeight: 600, color: "#111827" } as const,
-  updated: { margin: 0, fontSize: "0.8rem", color: "#6b7280" } as const,
+  title: { margin: 0, fontSize: "1rem", fontWeight: 600, color: "#111827" } as const,
+  updated: { margin: 0, fontSize: "0.7rem", color: "#94a3b8" } as const,
   headline: {
-    marginTop: "0.5rem",
+    marginTop: "0.3rem",
     display: "flex",
     alignItems: "center",
-    gap: "0.6rem",
+    gap: "0.45rem",
     flexWrap: "wrap" as const,
   } as const,
   badge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "0.25rem 0.6rem",
+    padding: "0.16rem 0.45rem",
     borderRadius: "999px",
-    fontSize: "0.9rem",
+    fontSize: "0.75rem",
     fontWeight: 700,
   } as const,
-  scoreLine: { fontSize: "0.9rem", color: "#374151", fontWeight: 600 } as const,
+  scoreLine: { fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 } as const,
+  compactChips: {
+    marginTop: "0.3rem",
+    display: "flex",
+    flexWrap: "wrap" as const,
+    gap: "0.25rem",
+  } as const,
+  compactChip: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "0.22rem",
+    border: "1px solid #e5e7eb",
+    borderRadius: "999px",
+    background: "#fff",
+    padding: "0.13rem 0.38rem",
+    fontSize: "0.68rem",
+    color: "#475569",
+    whiteSpace: "nowrap" as const,
+  } as const,
+  summaryLine: {
+    marginTop: "0.3rem",
+    fontSize: "0.72rem",
+    color: "#64748b",
+    display: "-webkit-box",
+    WebkitLineClamp: 1,
+    WebkitBoxOrient: "vertical" as const,
+    overflow: "hidden",
+  } as const,
   bullets: {
-    marginTop: "0.4rem",
+    marginTop: "0.25rem",
     paddingLeft: "1.25rem",
   } as const,
-  bullet: { margin: "0.2rem 0", fontSize: "0.85rem", color: "#374151" } as const,
+  bullet: { margin: "0.15rem 0", fontSize: "0.74rem", color: "#374151" } as const,
   primaryLine: {
-    marginTop: "0.5rem",
-    fontSize: "0.85rem",
+    marginTop: "0.25rem",
+    fontSize: "0.74rem",
     color: "#475569",
   } as const,
   tilesGrid: {
-    marginTop: "0.75rem",
+    marginTop: "0.35rem",
     display: "grid",
     gridTemplateColumns: "repeat(2, 1fr)",
-    gap: "0.5rem",
+    gap: "0.35rem",
   } as const,
   tile: {
     border: "1px solid #e5e7eb",
-    borderRadius: "0.55rem",
-    padding: "0.5rem 0.6rem",
+    borderRadius: "0.45rem",
+    padding: "0.35rem 0.45rem",
     background: "#fafafa",
   } as const,
-  tileIcon: { display: "flex", alignItems: "center", gap: "0.35rem", marginBottom: "0.2rem" } as const,
-  tileLabel: { fontSize: "0.75rem", color: "#6b7280" } as const,
-  tileCount: { fontSize: "1.1rem", fontWeight: 700, color: "#111827" } as const,
-  tileRisky: { fontSize: "0.8rem", color: "#b45309", fontWeight: 600 } as const,
-  details: { marginTop: "0.75rem" } as const,
+  tileIcon: { display: "flex", alignItems: "center", gap: "0.28rem", marginBottom: "0.15rem" } as const,
+  tileLabel: { fontSize: "0.66rem", color: "#6b7280" } as const,
+  tileCount: { fontSize: "0.88rem", fontWeight: 700, color: "#111827" } as const,
+  tileRisky: { fontSize: "0.68rem", color: "#b45309", fontWeight: 600 } as const,
+  details: { marginTop: "0.3rem" } as const,
   detailsSummary: {
     cursor: "pointer",
-    fontSize: "0.85rem",
+    fontSize: "0.72rem",
     fontWeight: 600,
     color: "#374151",
   } as const,
-  detailsInner: { marginTop: "0.5rem", paddingLeft: "0.5rem" } as const,
+  detailsInner: { marginTop: "0.3rem", paddingLeft: "0.2rem" } as const,
   detailRow: {
     display: "flex",
     justifyContent: "space-between",
     gap: "0.5rem",
-    padding: "0.2rem 0",
-    fontSize: "0.8rem",
+    padding: "0.14rem 0",
+    fontSize: "0.7rem",
     borderBottom: "1px solid #f1f5f9",
   } as const,
   detailKey: { color: "#6b7280" } as const,
-  detailVal: { fontFamily: "monospace", fontSize: "0.78rem", color: "#111827" } as const,
+  detailVal: { fontFamily: "monospace", fontSize: "0.68rem", color: "#111827" } as const,
   rawPre: {
-    marginTop: "0.5rem",
-    padding: "0.5rem",
+    marginTop: "0.3rem",
+    padding: "0.35rem",
     border: "1px solid #e5e7eb",
     borderRadius: "0.45rem",
     background: "#f8fafc",
-    fontSize: "0.72rem",
+    fontSize: "0.65rem",
     whiteSpace: "pre-wrap" as const,
     wordBreak: "break-word" as const,
-    maxHeight: "200px",
+    maxHeight: "140px",
     overflow: "auto",
   } as const,
 };
@@ -177,13 +204,9 @@ export function HazardsSection({
   hazardsLastComputedAt,
 }: HazardsSectionProps) {
   const counts = getHazardCounts(hazards);
-  const bullets = reasonsToBullets(hazardsReasons);
   const primary = primaryConcerns(counts);
   const classKey = String(hazardsClass ?? "").trim().toLowerCase();
   const classStyle = CLASS_COLORS[classKey] ?? { bg: "#f1f5f9", text: "#475569" };
-  const rawReasonsStr = Array.isArray(hazardsReasons)
-    ? hazardsReasons.join(", ")
-    : (hazardsReasons != null ? String(hazardsReasons) : "");
 
   const hasAnyData =
     hazards != null ||
@@ -193,6 +216,17 @@ export function HazardsSection({
     hazardsLastComputedAt != null;
 
   if (!hasAnyData) return null;
+
+  const compactItems = [
+    { label: "Road", value: counts.roadTotal, icon: <Route size={12} style={{ color: "#6366f1" }} /> },
+    { label: "Risky road", value: counts.roadRisky, icon: <Route size={12} style={{ color: "#b45309" }} /> },
+    { label: "Bike", value: counts.bike, icon: <Bike size={12} style={{ color: "#059669" }} /> },
+    { label: "Water", value: counts.water, icon: <Waves size={12} style={{ color: "#0ea5e9" }} /> },
+    { label: "Cliff", value: counts.cliff, icon: <Mountain size={12} style={{ color: "#78716c" }} /> },
+  ].filter((item) => item.value > 0);
+  const summaryText = primary.length > 0
+    ? `Primary concerns: ${primary.join(", ")}`
+    : "No major hazard concentrations reported.";
 
   return (
     <section style={S.section}>
@@ -211,101 +245,66 @@ export function HazardsSection({
         >
           {classLabel(hazardsClass)}
         </span>
-        <span style={S.scoreLine}>
-          Risk score: {formatScore(hazardsScore)}
-          {hazardsScore != null && Number.isFinite(hazardsScore) ? (
-            <span style={{ marginLeft: "0.35rem", color: "#6b7280", fontWeight: 500 }}>
-              ({scoreToPercent(hazardsScore)}/100)
+      </div>
+
+      {compactItems.length > 0 ? (
+        <div style={S.compactChips}>
+          {compactItems.slice(0, 3).map((item) => (
+            <span key={item.label} style={S.compactChip}>
+              {item.icon}
+              {item.label}: {item.value}
             </span>
-          ) : null}
-        </span>
-      </div>
-
-      {bullets.length > 0 ? (
-        <ul style={S.bullets}>
-          {bullets.map((b, i) => (
-            <li key={i} style={S.bullet}>
-              {b}
-            </li>
           ))}
-        </ul>
-      ) : null}
-
-      {primary.length > 0 ? (
-        <p style={S.primaryLine}>
-          Primary concerns: {primary.join(", ")}
-        </p>
-      ) : null}
-
-      <div style={S.tilesGrid}>
-        <div style={S.tile}>
-          <div style={S.tileIcon}>
-            <Route size={16} style={{ color: "#6366f1" }} />
-            <span style={S.tileLabel}>Road crossings</span>
-          </div>
-          <div style={S.tileCount}>Total: {counts.roadTotal}</div>
-          {counts.roadRisky > 0 ? (
-            <div style={S.tileRisky}>Risky: {counts.roadRisky}</div>
+          {compactItems.length > 3 ? (
+            <span style={S.compactChip}>+{compactItems.length - 3} more</span>
           ) : null}
         </div>
-        <div style={S.tile}>
-          <div style={S.tileIcon}>
-            <Waves size={16} style={{ color: "#0ea5e9" }} />
-            <span style={S.tileLabel}>Water crossings</span>
-          </div>
-          <div style={S.tileCount}>{counts.water}</div>
-        </div>
-        <div style={S.tile}>
-          <div style={S.tileIcon}>
-            <Mountain size={16} style={{ color: "#78716c" }} />
-            <span style={S.tileLabel}>Cliff / steep edge</span>
-          </div>
-          <div style={S.tileCount}>{counts.cliff}</div>
-        </div>
-        <div style={S.tile}>
-          <div style={S.tileIcon}>
-            <Bike size={16} style={{ color: "#059669" }} />
-            <span style={S.tileLabel}>Bike conflict</span>
-          </div>
-          <div style={S.tileCount}>{counts.bike}</div>
-        </div>
-        <div style={S.tile}>
-          <div style={S.tileIcon}>
-            <Dog size={16} style={{ color: "#a16207" }} />
-            <span style={S.tileLabel}>Off-leash conflict proxy</span>
-          </div>
-          <div style={S.tileCount}>{counts.offLeash}</div>
-        </div>
-      </div>
+      ) : null}
+
+      <p style={S.summaryLine}>{summaryText}</p>
 
       <details style={S.details}>
-        <summary style={S.detailsSummary}>See full hazard data</summary>
+        <summary style={S.detailsSummary}>Show hazard breakdown</summary>
         <div style={S.detailsInner}>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>hazardsClass</span>
-            <span style={S.detailVal}>{hazardsClass ?? "—"}</span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>hazardsScore</span>
-            <span style={S.detailVal}>{hazardsScore != null ? String(hazardsScore) : "—"}</span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>hazardsLastComputedAt</span>
-            <span style={S.detailVal}>
-              {hazardsLastComputedAt != null ? String(hazardsLastComputedAt) : "—"} ({formatDate(hazardsLastComputedAt)})
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>hazardsReasons (raw)</span>
-            <span style={{ ...S.detailVal, maxWidth: "70%", wordBreak: "break-word" }}>
-              {rawReasonsStr || "—"}
-            </span>
-          </div>
-          <div style={{ marginTop: "0.35rem" }}>
-            <span style={S.detailKey}>hazards (object)</span>
-            <pre style={S.rawPre}>
-              {hazards != null ? JSON.stringify(hazards, null, 2) : "—"}
-            </pre>
+          <div style={S.tilesGrid}>
+            <div style={S.tile}>
+              <div style={S.tileIcon}>
+                <Route size={16} style={{ color: "#6366f1" }} />
+                <span style={S.tileLabel}>Road crossings</span>
+              </div>
+              <div style={S.tileCount}>Total: {counts.roadTotal}</div>
+              {counts.roadRisky > 0 ? (
+                <div style={S.tileRisky}>Risky: {counts.roadRisky}</div>
+              ) : null}
+            </div>
+            <div style={S.tile}>
+              <div style={S.tileIcon}>
+                <Waves size={16} style={{ color: "#0ea5e9" }} />
+                <span style={S.tileLabel}>Water crossings</span>
+              </div>
+              <div style={S.tileCount}>{counts.water}</div>
+            </div>
+            <div style={S.tile}>
+              <div style={S.tileIcon}>
+                <Mountain size={16} style={{ color: "#78716c" }} />
+                <span style={S.tileLabel}>Cliff / steep edge</span>
+              </div>
+              <div style={S.tileCount}>{counts.cliff}</div>
+            </div>
+            <div style={S.tile}>
+              <div style={S.tileIcon}>
+                <Bike size={16} style={{ color: "#059669" }} />
+                <span style={S.tileLabel}>Bike conflict</span>
+              </div>
+              <div style={S.tileCount}>{counts.bike}</div>
+            </div>
+            <div style={S.tile}>
+              <div style={S.tileIcon}>
+                <Dog size={16} style={{ color: "#a16207" }} />
+                <span style={S.tileLabel}>Off-leash conflict proxy</span>
+              </div>
+              <div style={S.tileCount}>{counts.offLeash}</div>
+            </div>
           </div>
         </div>
       </details>

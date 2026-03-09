@@ -401,17 +401,16 @@ export function AfterDarkSection(props: AfterDarkSectionProps) {
         </div>
       ) : null}
 
-      <p style={S.footerNote}>Based on lighting, access hours, and nearby hazards.</p>
     </section>
   );
 }
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
   } as const,
   headerRow: {
     display: "flex",
@@ -425,17 +424,17 @@ const S = {
     alignItems: "center",
     gap: "0.45rem",
   } as const,
-  title: { margin: 0, fontSize: "1.2rem", color: "#111827" } as const,
+  title: { margin: 0, fontSize: "1.1rem", color: "#111827" } as const,
   badge: {
     border: "1px solid",
     borderRadius: "9999px",
-    padding: "0.2rem 0.55rem",
-    fontSize: "0.78rem",
+    padding: "0.18rem 0.5rem",
+    fontSize: "0.74rem",
     fontWeight: 700,
     whiteSpace: "nowrap" as const,
   } as const,
   chipsRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.35rem",
@@ -443,24 +442,24 @@ const S = {
   chip: {
     border: "1px solid #e5e7eb",
     borderRadius: "0.55rem",
-    padding: "0.2rem 0.5rem",
-    fontSize: "0.8rem",
+    padding: "0.18rem 0.45rem",
+    fontSize: "0.75rem",
     color: "#374151",
     background: "#fff",
     whiteSpace: "nowrap" as const,
   } as const,
   explainer: {
-    margin: "0.5rem 0 0",
-    fontSize: "0.85rem",
+    margin: "0.35rem 0 0",
+    fontSize: "0.8rem",
     lineHeight: 1.45,
     color: "#374151",
     display: "-webkit-box",
-    WebkitLineClamp: 3,
+    WebkitLineClamp: 2,
     WebkitBoxOrient: "vertical" as const,
     overflow: "hidden",
   } as const,
   tipsRow: {
-    marginTop: "0.45rem",
+    marginTop: "0.3rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.35rem",
@@ -473,13 +472,8 @@ const S = {
     background: "#fffbeb",
     color: "#92400e",
     borderRadius: "0.5rem",
-    padding: "0.2rem 0.45rem",
-    fontSize: "0.77rem",
+    padding: "0.18rem 0.4rem",
+    fontSize: "0.73rem",
     lineHeight: 1.25,
-  } as const,
-  footerNote: {
-    margin: "0.45rem 0 0",
-    fontSize: "0.8rem",
-    color: "#6b7280",
   } as const,
 } as const;

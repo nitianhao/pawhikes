@@ -145,8 +145,8 @@ export function SwimSection({
 
   const points = Array.isArray(swimAccessPoints) ? swimAccessPoints : [];
   const sorted = sortAccessPoints(points);
-  const top3 = sorted.slice(0, 3);
-  const hasMore = sorted.length > 3;
+  const top2 = sorted.slice(0, 1);
+  const hasMore = sorted.length > 1;
 
   return (
     <section style={S.section}>
@@ -188,26 +188,24 @@ export function SwimSection({
         />
       </div>
 
-      <div style={S.chipsRow}>
-        <div style={S.chip}>
-          <MapPin size={14} style={{ flexShrink: 0, color: "#6b7280" }} />
-          <span>Access points: {count}</span>
-        </div>
+      <div style={S.compactMeta}>
+        <span style={S.metaItem}>
+          <MapPin size={12} style={{ flexShrink: 0 }} />
+          {count} access point{count === 1 ? "" : "s"}
+        </span>
         {typeEntries.length > 0 ? (
-          <div style={S.chip}>
-            <span>
-              {typeEntries
-                .slice(0, 3)
-                .map(({ key, count: n }) => `${humanizeTypeKey(key)}: ${n}`)
-                .join(", ")}
-            </span>
-          </div>
+          <span style={S.metaItem}>
+            {typeEntries
+              .slice(0, 3)
+              .map(({ key, count: n }) => `${humanizeTypeKey(key)}: ${n}`)
+              .join(" • ")}
+          </span>
         ) : null}
         {swimLikely === true ? (
-          <div style={S.chip}>
-            <Waves size={14} style={{ flexShrink: 0, color: "#0ea5e9" }} />
-            <span>Good chance to splash</span>
-          </div>
+          <span style={S.metaItem}>
+            <Waves size={12} style={{ flexShrink: 0 }} />
+            Good chance to splash
+          </span>
         ) : null}
       </div>
 
@@ -216,10 +214,10 @@ export function SwimSection({
         {safetyNote}
       </p>
 
-      {top3.length > 0 ? (
+      {top2.length > 0 ? (
         <div style={S.spotBlock}>
-          <div style={S.spotLabel}>Find a spot</div>
-          {top3.map((point, i) => {
+          <div style={S.spotLabel}>Access point</div>
+          {top2.map((point, i) => {
             const kind = (point.kind ?? "access").toString();
             const name = (point.name ?? "Unnamed").toString().trim() || "Unnamed";
             const coords = getLonLat(point);
@@ -240,7 +238,6 @@ export function SwimSection({
                       style={S.actionLink}
                     >
                       <ExternalLink size={12} />
-                      Open in Maps
                     </a>
                     <CopyCoordsButton lat={coords.lat} lon={coords.lon} />
                   </span>
@@ -288,51 +285,16 @@ export function SwimSection({
         </div>
       ) : null}
 
-      <details style={S.dataDetails}>
-        <summary style={S.detailsSummary}>Data details</summary>
-        <div style={S.dataDetailsInner}>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>swimLikely</span>
-            <span style={S.detailVal}>
-              {swimLikely === true ? "true" : swimLikely === false ? "false" : "—"}
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>swimAccessPointsCount</span>
-            <span style={S.detailVal}>
-              {swimAccessPointsCount != null ? String(swimAccessPointsCount) : "—"}
-            </span>
-          </div>
-          <div style={S.detailRow}>
-            <span style={S.detailKey}>swimAccessPointsByType</span>
-            <span style={S.detailVal}>
-              <pre style={S.rawPre}>
-                {swimAccessPointsByType != null
-                  ? JSON.stringify(swimAccessPointsByType, null, 2)
-                  : "—"}
-              </pre>
-            </span>
-          </div>
-          <div style={{ marginTop: "0.35rem" }}>
-            <span style={S.detailKey}>swimAccessPoints</span>
-            <pre style={S.rawPreScroll}>
-              {Array.isArray(swimAccessPoints)
-                ? JSON.stringify(swimAccessPoints, null, 2)
-                : "—"}
-            </pre>
-          </div>
-        </div>
-      </details>
     </section>
   );
 }
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
   } as const,
   headerRow: {
     display: "flex",
@@ -342,15 +304,15 @@ const S = {
   } as const,
   title: {
     margin: 0,
-    fontSize: "1.25rem",
+    fontSize: "1.1rem",
     fontWeight: 600,
     color: "#111827",
     display: "inline-flex",
     alignItems: "center",
   } as const,
-  subtitle: { margin: 0, fontSize: "0.85rem", color: "#6b7280" } as const,
+  subtitle: { margin: 0, fontSize: "0.78rem", color: "#6b7280" } as const,
   headlineRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.35rem",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -360,19 +322,19 @@ const S = {
   badge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "0.35rem 0.65rem",
+    padding: "0.2rem 0.5rem",
     borderRadius: "0.5rem",
-    fontSize: "0.95rem",
+    fontSize: "0.8rem",
     fontWeight: 600,
   } as const,
   countPill: {
-    fontSize: "0.95rem",
+    fontSize: "0.82rem",
     fontWeight: 700,
     color: "#111827",
     fontVariantNumeric: "tabular-nums" as const,
   } as const,
   barRow: {
-    marginTop: "0.5rem",
+    marginTop: "0.3rem",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
@@ -393,38 +355,35 @@ const S = {
     overflow: "hidden",
     background: "#e5e7eb",
   } as const,
-  chipsRow: {
-    marginTop: "0.5rem",
+  compactMeta: {
+    marginTop: "0.3rem",
     display: "flex",
     flexWrap: "wrap" as const,
-    gap: "0.4rem",
+    gap: "0.3rem 0.55rem",
+    alignItems: "center",
   } as const,
-  chip: {
+  metaItem: {
     display: "inline-flex",
     alignItems: "center",
-    gap: "0.35rem",
-    border: "1px solid #e5e7eb",
-    borderRadius: "0.5rem",
-    background: "white",
-    padding: "0.3rem 0.55rem",
-    fontSize: "0.82rem",
-    color: "#374151",
+    gap: "0.25rem",
+    fontSize: "0.74rem",
+    color: "#475569",
   } as const,
   explanation: {
-    marginTop: "0.5rem",
-    fontSize: "0.85rem",
-    lineHeight: 1.45,
+    marginTop: "0.3rem",
+    fontSize: "0.76rem",
+    lineHeight: 1.35,
     color: "#374151",
   } as const,
-  spotBlock: { marginTop: "0.6rem" } as const,
-  spotLabel: { fontSize: "0.8rem", fontWeight: 600, color: "#374151", marginBottom: "0.35rem" } as const,
+  spotBlock: { marginTop: "0.35rem" } as const,
+  spotLabel: { fontSize: "0.72rem", fontWeight: 600, color: "#475569", marginBottom: "0.15rem" } as const,
   spotRow: {
     display: "flex",
     alignItems: "center",
-    gap: "0.5rem",
-    padding: "0.35rem 0",
+    gap: "0.4rem",
+    padding: "0.18rem 0",
     borderBottom: "1px solid #f1f5f9",
-    fontSize: "0.82rem",
+    fontSize: "0.74rem",
   } as const,
   spotIcon: { flexShrink: 0 } as const,
   spotText: { flex: "1 1 auto", minWidth: 0 } as const,
@@ -435,60 +394,26 @@ const S = {
     gap: "0.25rem",
     color: "#0369a1",
     textDecoration: "none",
-    fontSize: "0.8rem",
+    fontSize: "0.75rem",
   } as const,
   actionBtn: {
     display: "inline-flex",
     alignItems: "center",
     gap: "0.25rem",
-    padding: "0.2rem 0.4rem",
-    fontSize: "0.75rem",
+    padding: "0.14rem 0.32rem",
+    fontSize: "0.68rem",
     border: "1px solid #e5e7eb",
     borderRadius: "0.35rem",
     background: "white",
     color: "#374151",
     cursor: "pointer",
   } as const,
-  allDetails: { marginTop: "0.35rem" } as const,
-  allList: { marginTop: "0.35rem" } as const,
+  allDetails: { marginTop: "0.15rem" } as const,
+  allList: { marginTop: "0.15rem" } as const,
   detailsSummary: {
     cursor: "pointer",
-    fontSize: "0.82rem",
+    fontSize: "0.75rem",
     fontWeight: 600,
     color: "#374151",
-  } as const,
-  dataDetails: { marginTop: "0.6rem" } as const,
-  dataDetailsInner: { marginTop: "0.35rem" } as const,
-  detailRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "0.5rem",
-    padding: "0.2rem 0",
-    fontSize: "0.8rem",
-    borderBottom: "1px solid #f1f5f9",
-  } as const,
-  detailKey: { color: "#6b7280", fontFamily: "monospace", fontSize: "0.78rem" } as const,
-  detailVal: { fontSize: "0.78rem", color: "#111827" } as const,
-  rawPre: {
-    margin: 0,
-    fontSize: "0.72rem",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-    background: "#f8fafc",
-    padding: "0.35rem",
-    borderRadius: "0.35rem",
-    border: "1px solid #e5e7eb",
-  } as const,
-  rawPreScroll: {
-    margin: "0.35rem 0 0",
-    fontSize: "0.72rem",
-    whiteSpace: "pre-wrap",
-    wordBreak: "break-word",
-    background: "#f8fafc",
-    padding: "0.35rem",
-    borderRadius: "0.35rem",
-    border: "1px solid #e5e7eb",
-    maxHeight: "12rem",
-    overflow: "auto",
   } as const,
 } as const;

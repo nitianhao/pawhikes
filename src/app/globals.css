@@ -36,15 +36,284 @@ body {
 
 body {
   font-family: var(--font-inter, system-ui, -apple-system, sans-serif);
+  background-color: #f8f5f0;
 }
 
-/* ── SiteHeader responsive layout ────────────────────────────────────────── */
-.site-header__desktop { display: none; }
-.site-header__mobile  { display: flex; }
+/* ── Global Header ───────────────────────────────────────────────────────── */
+.site-header-root {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: linear-gradient(
+    180deg,
+    rgba(20, 83, 45, 0.97) 0%,
+    rgba(19, 78, 43, 0.97) 100%
+  );
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset, 0 1px 10px rgba(0, 0, 0, 0.14);
+}
 
-@media (min-width: 768px) {
-  .site-header__desktop { display: flex !important; }
-  .site-header__mobile  { display: none !important; }
+.site-header-shell {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 0.56rem 1.5rem;
+}
+
+.site-header-row1 {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 42px;
+}
+
+.site-header-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.42rem;
+  text-decoration: none;
+  color: #fff;
+  font-size: 1.06rem;
+  font-weight: 680;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.site-header-zone {
+  min-width: 0;
+}
+
+.site-header-zone--logo,
+.site-header-zone--nav,
+.site-header-zone--cta {
+  flex: 0 0 auto;
+}
+
+.site-header-zone--search {
+  flex: 1 1 auto;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.site-header-zone--cta {
+  margin-left: 1rem;
+}
+
+.site-header-add {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 35px;
+  border-radius: 10px;
+  padding: 0 0.78rem;
+  background: linear-gradient(180deg, #1aab4f 0%, #169647 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 550;
+  white-space: nowrap;
+  transition: background-color 0.14s ease, box-shadow 0.14s ease, border-color 0.14s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+.site-header-add:hover {
+  background: linear-gradient(180deg, #16a34a 0%, #15803d 100%);
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.site-header-search {
+  position: relative;
+  width: 100%;
+}
+
+.site-header-search__icon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.72);
+  pointer-events: none;
+}
+
+.site-header-search__input {
+  width: 100%;
+  height: 41px;
+  border-radius: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.125);
+  color: #fff;
+  padding: 0 2.28rem 0 2.28rem;
+  font-size: 0.92rem;
+  line-height: 1.2;
+  outline: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.site-header-search__input::placeholder {
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.site-header-search__input:focus {
+  border-color: rgba(134, 239, 172, 0.86);
+  background: rgba(255, 255, 255, 0.165);
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.26);
+}
+
+.site-header-search__submit {
+  position: absolute;
+  right: 0.42rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.site-header-search__submit:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.site-header-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.site-header-nav__link {
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 420;
+  padding: 0.2rem 0.15rem;
+  border-bottom: 1px solid transparent;
+  transition: color 0.14s ease, border-color 0.14s ease, opacity 0.14s ease;
+  opacity: 0.95;
+}
+
+.site-header-nav__link:hover {
+  color: #ecfdf5;
+  border-color: rgba(236, 253, 245, 0.58);
+  opacity: 1;
+}
+
+.site-header-nav--mobile {
+  display: none;
+}
+
+.site-header-menu {
+  position: relative;
+}
+
+.site-header-menu__button {
+  list-style: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.site-header-menu__button::-webkit-details-marker { display: none; }
+.site-header-menu__button::marker { display: none; }
+
+.site-header-menu__panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  width: 210px;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  background: #0f3320;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.34);
+  padding: 0.45rem;
+}
+
+.site-header-menu__link,
+.site-header-menu__cta {
+  display: block;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 0.5rem 0.55rem;
+  font-size: 0.88rem;
+}
+
+.site-header-menu__link:hover,
+.site-header-menu__cta:hover {
+  background: rgba(74, 222, 128, 0.16);
+}
+
+.site-header-menu__cta {
+  margin-top: 0.25rem;
+  font-weight: 600;
+  color: #bbf7d0;
+}
+
+.site-header-row2 {
+  display: none;
+}
+
+@media (max-width: 920px) {
+  .site-header-shell {
+    padding: 0.5rem 1rem 0.6rem 1rem;
+  }
+
+  .site-header-row1 {
+    justify-content: space-between;
+  }
+
+  .site-header-zone--search,
+  .site-header-zone--cta {
+    display: none;
+  }
+
+  .site-header-nav--desktop,
+  .site-header-add--desktop {
+    display: none;
+  }
+
+  .site-header-nav--mobile {
+    display: block;
+  }
+
+  .site-header-row2 {
+    display: block;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 1180px) {
+  .site-header-shell {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .site-header-zone--search {
+    margin: 0 1rem;
+  }
+
+  .site-header-nav {
+    gap: 1rem;
+  }
+
+  .site-header-nav__link {
+    font-size: 0.84rem;
+  }
 }
 
 
@@ -93,16 +362,119 @@ body {
   border-color: #d1fae5 !important;
 }
 
+/* Pin-linked card highlight (map pin hover or click → card) */
+.city-trail-card--highlighted {
+  border-color: #86efac !important;
+  background: #f0fdf4 !important;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.2), 0 4px 16px rgba(0, 0, 0, 0.07) !important;
+}
+
+/* State page: entrance animation */
+@keyframes state-card-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* State page: city browse cards */
+.state-city-card {
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  animation: state-card-in 0.22s ease both;
+  animation-delay: var(--card-delay, 0ms);
+}
+
+.state-city-card:hover,
+.state-city-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: #bbf7d0 !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.10), inset 3px 0 0 #16a34a !important;
+  outline: none;
+}
+
+.state-city-card:hover .state-city-card__footer,
+.state-city-card:focus-visible .state-city-card__footer {
+  background: #f0fdf4;
+  border-color: #dcfce7;
+}
+
+.state-city-card:hover .state-city-card__cta,
+.state-city-card:focus-visible .state-city-card__cta {
+  color: #14532d;
+}
+
+/* Arrow nudge on hover/focus */
+.state-city-card__cta svg {
+  transition: transform 0.15s ease;
+}
+
+.state-city-card:hover .state-city-card__cta svg,
+.state-city-card:focus-visible .state-city-card__cta svg {
+  transform: translateX(3px);
+}
+
+/* Keyboard focus ring (shown when not also hovered, via :focus-visible) */
+.state-city-card:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+}
+
+/* Reduced motion: disable entrance animation and all transitions */
+@media (prefers-reduced-motion: reduce) {
+  .state-city-card {
+    animation: none;
+    transition: border-color 0.1s ease, box-shadow 0.1s ease;
+  }
+  .state-city-card__cta svg {
+    transition: none;
+  }
+}
+
+/* State page: responsive city grid */
+.state-cities-grid {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+/* Single city: prevent the one card from stretching across the full section */
+.state-cities-grid:has(> li:only-child) {
+  grid-template-columns: minmax(0, 340px);
+}
+
+@media (min-width: 560px) {
+  .state-cities-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 860px) {
+  .state-cities-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .state-cities-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 /* ── CollapsibleSection / InsightCard: keep focus visible for keyboard users */
 .collapsible-summary:focus-visible {
   outline: 2px solid var(--bark-green-600);
   outline-offset: 2px;
 }
 
+/* Disclosure trigger hover */
+.collapsible-summary:hover {
+  background-color: #f0ece6;
+}
+
 /* InsightCard: subtle details toggle */
 .insight-card-summary:hover {
-  color: #334155;
-  text-decoration: underline;
+  background-color: #faf8f5;
 }
 
 /* TrailDashboard: always single-column — wide InsightCards handle their own internal responsive layout.
@@ -225,7 +597,27 @@ body {
   }
 }
 
-/* Certified badge by trail title: icon only, text on hover */
+/* ── InsightCard: progressive disclosure toggle ───────────────────────────── */
+/* Chevron rotates when <details> is open */
+details[open] .insight-card__toggle-icon {
+  transform: rotate(180deg);
+}
+.insight-card__toggle-icon {
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* InsightCard summary: remove default triangle in all browsers */
+.insight-card-summary::-webkit-details-marker { display: none; }
+.insight-card-summary::marker { display: none; }
+
+/* Trail detail back-link hover */
+.trail-back-link:hover {
+  color: #2c5f28;
+  text-decoration: underline;
+}
+
+/* ── Certified badge by trail title: icon only, text on hover */
 .certified-badge-by-title-label {
   max-width: 0;
   overflow: hidden;
@@ -239,4 +631,851 @@ body {
 .certified-badge-by-title:hover .certified-badge-by-title-label {
   max-width: 12rem;
   opacity: 1;
+}
+
+/* Homepage: explore by dog needs */
+.dog-needs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.6rem;
+}
+@media (min-width: 480px) {
+  .dog-needs-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (min-width: 640px) {
+  .dog-needs-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+.dog-needs-chip {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 88px;
+  border: 1px solid #dcfce7;
+  border-radius: 12px;
+  background: #f8fcf9;
+  padding: 0.75rem;
+  text-decoration: none;
+  color: #14532d;
+  transition: transform 0.14s ease, border-color 0.14s ease, background 0.14s ease, box-shadow 0.14s ease;
+}
+
+.dog-needs-chip:hover {
+  transform: translateY(-2px);
+  border-color: #4ade80;
+  background: #f0fdf4;
+  box-shadow: 0 6px 16px rgba(21, 128, 61, 0.10);
+}
+
+.dog-needs-chip:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+}
+
+.dog-needs-icon-wrap {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #bbf7d0;
+  background: #ffffff;
+  color: #15803d;
+  flex-shrink: 0;
+}
+
+.dog-needs-chip__bottom {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.25rem;
+}
+
+.dog-needs-label {
+  font-size: 0.84rem;
+  line-height: 1.3;
+  font-weight: 600;
+  color: #14532d;
+}
+
+.dog-needs-chip__arrow {
+  font-size: 0.875rem;
+  color: #15803d;
+  opacity: 0.3;
+  transform: translateX(0);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.dog-needs-chip:hover .dog-needs-chip__arrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dog-needs-chip { transition: border-color 0.1s ease, background 0.1s ease; }
+  .dog-needs-chip:hover { transform: none; }
+  .dog-needs-chip__arrow { transition: opacity 0.1s ease; }
+  .dog-needs-chip:hover .dog-needs-chip__arrow { transform: none; }
+}
+
+/* Homepage: featured trails */
+.featured-trails-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+@media (min-width: 768px) {
+  .featured-trails-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .featured-trails-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.featured-trail-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.featured-trail-card::before {
+  content: "";
+  display: block;
+  height: 4px;
+  background: linear-gradient(90deg, #4ade80 0%, #86efac 60%, #bbf7d0 100%);
+}
+
+.featured-trail-card:hover {
+  transform: translateY(-2px);
+  border-color: #bbf7d0;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+}
+
+.featured-trail-card__body {
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.featured-trail-card__location {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.featured-trail-card__name-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.featured-trail-card__title {
+  font-size: 1rem;
+  line-height: 1.3;
+  color: #0f172a;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.featured-trail-card__distance {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #14532d;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.featured-trail-card__elevation {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+.featured-trail-card__attrs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.1rem;
+}
+
+.featured-trail-card__chip {
+  font-size: 0.72rem;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  background: #f9fafb;
+  border-radius: 5px;
+  padding: 0.15rem 0.45rem;
+}
+
+.featured-trail-card__chip--policy {
+  color: #166534;
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.featured-trail-card__cta {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.25rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #15803d;
+  text-decoration: none;
+}
+
+.featured-trail-card__cta:hover {
+  text-decoration: underline;
+  color: #14532d;
+}
+
+.featured-trail-card:has(a:focus-visible) {
+  outline: 2px solid #16a34a;
+  outline-offset: 2px;
+  border-color: #4ade80;
+}
+
+.featured-trail-card__cta:focus-visible {
+  outline: 2px solid #16a34a;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.featured-trail-card__cta-arrow {
+  display: inline-block;
+  transition: transform 0.14s ease;
+}
+
+.featured-trail-card:hover .featured-trail-card__cta-arrow {
+  transform: translateX(3px);
+}
+
+/* Homepage: value explanation cards */
+.home-value-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1rem;
+  background: #fff;
+  transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.home-value-card:hover {
+  transform: translateY(-2px);
+  border-color: #bbf7d0;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.07);
+}
+
+/* Homepage: coverage table row hover */
+.home-coverage-row {
+  border-top: 1px solid #eef2f7;
+  transition: background 0.1s ease;
+}
+
+.home-coverage-row:hover {
+  background: #f9fafb;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-value-card { transition: border-color 0.1s ease; }
+  .home-value-card:hover { transform: none; }
+  .featured-trail-card__cta-arrow { transition: none; }
+  .featured-trail-card:hover .featured-trail-card__cta-arrow { transform: none; }
+}
+
+/* ── Trail detail page: mobile layout polish ─────────────────────────────── */
+
+/* InsightCard header: responsive padding */
+.insight-card__header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f0ece6;
+  flex-shrink: 0;
+}
+@media (min-width: 640px) {
+  .insight-card__header {
+    padding: 0.875rem 1.5rem;
+  }
+}
+
+/* InsightCard body: responsive padding */
+.insight-card__body {
+  padding: 1.125rem 1rem 1.25rem;
+}
+@media (min-width: 640px) {
+  .insight-card__body {
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+}
+
+/* InsightCard rows grid: single-column flex on mobile, 2-column grid on wider screens */
+.insight-card-rows-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  font-size: 0.875rem;
+  margin-top: 1rem;
+  gap: 0.35rem;
+}
+.insight-card-rows-grid > div {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: space-between;
+  align-items: baseline;
+}
+@media (min-width: 480px) {
+  .insight-card-rows-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem 1.5rem;
+  }
+  .insight-card-rows-grid > div {
+    display: contents;
+  }
+}
+
+/* InsightCard wide layout inner: responsive padding and gap */
+.insight-card--wide .insight-card__inner {
+  padding: 1.125rem 1rem 1.25rem;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .insight-card--wide .insight-card__inner {
+    padding: 1.5rem 1.75rem 1.75rem;
+    gap: 1.5rem;
+  }
+}
+
+/* TrailSectionShell header: responsive padding */
+.trail-section-shell__header {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #f0ece6;
+  flex-shrink: 0;
+}
+@media (min-width: 640px) {
+  .trail-section-shell__header {
+    padding: 0.875rem 1.5rem;
+  }
+}
+
+/* TrailSectionShell body: responsive padding */
+.trail-section-shell__body {
+  padding: 1.125rem 1rem 1.25rem;
+}
+@media (min-width: 640px) {
+  .trail-section-shell__body {
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+}
+
+/* TrailHero card: responsive padding */
+.trail-hero {
+  padding: 1.25rem 1rem;
+}
+@media (min-width: 640px) {
+  .trail-hero {
+    padding: 2rem 1.5rem;
+  }
+}
+
+/* TrailHero title: responsive font size */
+.trail-hero__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  color: #1c1a17;
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .trail-hero__title {
+    font-size: 2rem;
+  }
+}
+
+/* TrailDashboard: tighter gap on mobile */
+@media (max-width: 639px) {
+  .trail-dashboard {
+    gap: 2rem !important;
+  }
+}
+
+/* Section (major card wrapper): responsive padding */
+.section-card__header {
+  padding: 1.125rem 1rem;
+  border-bottom: 1px solid #f0ece6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+@media (min-width: 640px) {
+  .section-card__header {
+    padding: 1rem 1.5rem;
+  }
+}
+
+.section-card__body {
+  padding: 1.125rem 1rem;
+}
+@media (min-width: 640px) {
+  .section-card__body {
+    padding: 1.5rem 1.5rem;
+  }
+}
+
+/* ─── Mobile section hierarchy ───────────────────────────────────────────────── */
+
+/* Outer page flex column: wider gap on mobile so sections breathe */
+.trail-page-sections {
+  gap: 2.5rem;
+}
+@media (min-width: 640px) {
+  .trail-page-sections {
+    gap: 1.5rem;
+  }
+}
+
+/* Section card header: warm tint on mobile to anchor the section visually */
+.section-card__header {
+  background-color: #faf8f5;
+}
+@media (min-width: 640px) {
+  .section-card__header {
+    background-color: transparent;
+  }
+}
+
+/* Section title: prominent on mobile, scaled back on desktop */
+.section-card__title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  color: #1c1a17;
+  margin: 0;
+}
+@media (min-width: 640px) {
+  .section-card__title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Section subtitle: slightly more visible on mobile */
+.section-card__subtitle {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #6b6457;
+  margin: 0;
+  line-height: 1.45;
+}
+@media (min-width: 640px) {
+  .section-card__subtitle {
+    font-weight: 400;
+  }
+}
+
+/* SurfaceSection compact wrap: single column on mobile, 2-col on wider screens */
+.surface-compact-wrap {
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 540px) {
+  .surface-compact-wrap {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+/* StatTile value: smaller on narrow mobile, full size at 640px+ */
+.stat-tile__value {
+  font-size: 1.125rem;
+}
+@media (min-width: 640px) {
+  .stat-tile__value {
+    font-size: 1.375rem;
+  }
+}
+
+/* ShadeSection compact wrap: single column on mobile, 2-col on wider screens */
+.shade-compact-wrap {
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 540px) {
+  .shade-compact-wrap {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+  }
+}
+
+/* WaterSection compact wrap: single column on mobile, 2-col on wider screens */
+.water-compact-wrap {
+  display: flex;
+  flex-direction: column;
+}
+@media (min-width: 540px) {
+  .water-compact-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* DogTypesSection grid: 1 col on narrow mobile, 2 col at 480px+ */
+.dog-types-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .dog-types-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* SurfaceSection hero inner: icon + text row, pills pushed to new line on mobile */
+.surface-hero-inner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+@media (max-width: 540px) {
+  .surface-hero-inner > *:last-child {
+    flex-basis: 100%;
+  }
+}
+
+/* ── Mobile section jump navigation ─────────────────────────────────────────
+   Hidden on desktop. Sticky bar (below the site header) with horizontal
+   scrolling pills that jump to major sections on the trail detail page.
+   Active section is highlighted via IntersectionObserver in SectionNav.client.tsx
+   ─────────────────────────────────────────────────────────────────────────── */
+.section-nav-mobile {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .section-nav-mobile {
+    display: flex;
+    position: sticky;
+    /* top is set via JS to match site-header-root height */
+    top: 0;
+    z-index: 40;
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    flex-shrink: 0;
+  }
+
+  .section-nav-mobile::-webkit-scrollbar {
+    display: none;
+  }
+
+  .section-nav-item {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0 0.875rem;
+    height: 44px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #6b7280;
+    text-decoration: none;
+    white-space: nowrap;
+    border-bottom: 2px solid transparent;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .section-nav-item:hover {
+    color: #111827;
+  }
+
+  .section-nav-item--active {
+    color: #15803d;
+    border-bottom-color: #15803d;
+    font-weight: 600;
+  }
+
+  /* Scroll margin so sticky header + sticky nav don't cover section titles */
+  #dogfit,
+  #safety,
+  #suitability,
+  #terrain,
+  #access,
+  #map,
+  #explore,
+  #rules,
+  #faqs {
+    scroll-margin-top: 110px;
+  }
+}
+
+/* Section header row: title (left) + subtitle (right) on desktop, stacked on narrow mobile */
+.section-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+@media (max-width: 540px) {
+  .section-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.1rem;
+  }
+}
+
+/* ── Mobile visual simplification ────────────────────────────────────────────
+   Reduces box-in-box nesting and repeated shadow/border emphasis on mobile.
+   Desktop (>768px) is completely unchanged — all rules are scoped to ≤768px.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* === 1. Major section containers: remove floating card shadow ============ */
+  /* These shadows stack up on mobile making every card feel equally "raised". */
+  /* !important required — shadow is set via inline style on the element.     */
+  .section-card,
+  .trail-hero,
+  .insight-card,
+  .insight-card--wide {
+    box-shadow: none !important;
+  }
+
+  /* === 2. StatTiles: remove per-tile shadow ================================ */
+  /* 15+ tiles per page. The shadow adds noise without helping scanning.      */
+  /* !important required — shadow is set via inline style on the element.     */
+  .stat-tile {
+    box-shadow: none !important;
+  }
+
+  /* === 3. Disclosure: remove tinted background ============================ */
+  /* Inside a bordered InsightCard the #faf8f5 fill creates box-in-box.      */
+  /* Keep the border so the interactive trigger is still legible.             */
+  .disclosure-wrap {
+    background-color: transparent;
+  }
+
+  /* === 4. ShadeSection: normalize section bg + flatten compact cards ======= */
+  /* ShadeSection used #f8fafc (slate tint) while all other sections use #fff; */
+  /* makes it look like a different tier of container. Normalize to white.    */
+  .shade-section-root {
+    background-color: #ffffff;
+  }
+
+  /* Compact cards → flat rows separated by hairlines, no box framing        */
+  .shade-compact-card {
+    border: none;
+    border-top: 1px solid #f0ece6;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  /* Remove gap between cards — hairlines act as dividers instead            */
+  .shade-compact-wrap {
+    gap: 0;
+    margin-top: 0.75rem;
+  }
+
+  /* === 5. WaterSection: flatten stat chips + compact cards ================ */
+  /* Two bordered chip items (Near water / Swim) inside the section header   */
+  /* compete for attention with the gauge bar below. Soften to plain labels. */
+  .water-stat-chip {
+    border-color: #f0ece6;
+    background-color: transparent;
+  }
+
+  /* Compact cards → same hairline-row treatment as ShadeSection            */
+  .water-compact-card {
+    border: none;
+    border-top: 1px solid #f0ece6;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .water-compact-wrap {
+    gap: 0;
+    margin-top: 0.75rem;
+  }
+
+  /* === 6. SurfaceSection: flatten hero card + compact cards =============== */
+  /* heroCard is a gray-bg bordered box containing icon + text + pills.      */
+  /* On mobile this creates section border → heroCard border (2 boxes).      */
+  .surface-hero-card {
+    background-color: transparent;
+    border-color: transparent;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  /* Compact cards → same hairline-row treatment                             */
+  .surface-compact-card {
+    border: none;
+    border-top: 1px solid #f0ece6;
+    border-radius: 0;
+    padding-left: 0;
+    padding-right: 0;
+  }
+  .surface-compact-wrap {
+    gap: 0;
+    margin-top: 0.75rem;
+  }
+
+  /* === 7. ElevationWidthSection StatBlocks: remove card framing =========== */
+  /* Three bordered sub-cards stacked inside an InsightCard body:            */
+  /* InsightCard border → StatBlock border (2 levels). Remove the inner box. */
+  .elevation-stat-block {
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+  }
+  /* Separator only between consecutive blocks, not before the first        */
+  .elevation-stat-block + .elevation-stat-block {
+    border-top: 1px solid #f0ece6;
+    margin-top: 0.25rem;
+    padding-top: 0.75rem;
+  }
+  /* Remove mini header-row bottom border (just let the label float above)  */
+  .elevation-stat-block__header {
+    border-bottom: none;
+    padding-left: 0;
+    padding-right: 0;
+    padding-bottom: 0.25rem;
+  }
+  /* Remove inner body excess padding (outer InsightCard body handles edge)  */
+  .elevation-stat-block__body {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
+
+/* ── TrailHero mobile hierarchy ──────────────────────────────────────────────
+   Establishes a clear visual stack in the hero at ≤640px:
+     1. Title — strong landmark
+     2. Meta — location on one line, trail specs on the next
+     3. Verdict — supporting description
+     4. 2×2 stat tile grid — key dog-policy facts, balanced layout
+     5. Trust section — stacked vertically, no ragged horizontal wrap
+   Desktop (>640px) is completely unchanged.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+
+  /* Title: bump to 1.625rem — stronger landmark without forcing extra wraps */
+  .trail-hero__title {
+    font-size: 1.625rem;
+  }
+
+  /* Tighten overall hero stack — inline gap: 1rem is generous on mobile.    */
+  /* !important required — gap is set via inline style.                      */
+  .trail-hero {
+    gap: 0.75rem !important;
+  }
+
+  /* Meta: break location and specs onto separate lines on narrow screens.   */
+  /* Desktop: both spans are inline → single joined line (unchanged).        */
+  .trail-hero__meta-location {
+    display: block;
+  }
+  /* Hide the · separator between location and specs — no longer needed      */
+  /* once each part sits on its own line.                                     */
+  .trail-hero__meta-sep {
+    display: none;
+  }
+  .trail-hero__meta-specs {
+    display: block;
+  }
+
+  /* Tiles: 2×2 grid on narrow screens.                                      */
+  /* auto-fit minmax(90px) creates 3+1 asymmetry at ~360px — 2×2 is cleaner. */
+  /* !important required — grid columns set via inline style.                */
+  .trail-hero__tiles {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.625rem !important;
+  }
+
+  /* Trust row: stack badge / source / season vertically.                    */
+  /* flex-wrap produces ragged 2–3 line layout on narrow mobile.             */
+  /* !important required — flex-direction set via inline style.              */
+  .trail-hero__trust-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    row-gap: 0.375rem !important;
+    column-gap: 0 !important;
+  }
+
+  /* Best entry: allow wrap so very long trailhead names don't clip.         */
+  .trail-hero__best-entry {
+    flex-wrap: wrap;
+    row-gap: 0.125rem;
+  }
+}
+
+/* ── StatTile mobile breathing room ─────────────────────────────────────────
+   Slightly more generous padding and label-to-value gap on ≤640px.
+   Value font size bumped for easier scanning. Desktop unchanged.
+   !important required — padding and gap are set via inline style.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .stat-tile {
+    /* Vertical padding: 12px → 14px. Horizontal stays at 16px. */
+    padding: 0.875rem 1rem !important;
+    /* Label-to-value gap: 4px → 6px */
+    gap: 0.375rem !important;
+  }
+
+  /* Value: 1.125rem → 1.25rem — larger numbers scan faster on small screens */
+  .stat-tile__value {
+    font-size: 1.25rem;
+  }
+}
+
+/* ── Chip mobile normalization ───────────────────────────────────────────────
+   Chip gap values across the page range from 0.22rem to 0.75rem (all inline),
+   creating inconsistent wrapping on mobile. Adding margin: 2px to every .chip
+   creates a consistent spacing floor — effective gap = parent_gap + 4px —
+   without needing to touch 50+ container sites.
+   Height and horizontal padding bumped slightly for a better tap target.
+   Desktop unchanged. !important required — height/padding are inline styles.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .chip {
+    /* 28px → 30px: slightly more tapable */
+    height: 30px !important;
+    /* 10px → 12px: more breathing room inside each chip */
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    /* 2px margin on all sides: adds 4px to both horizontal and vertical gap,
+       normalizing effective chip separation across all container gap values */
+    margin: 2px;
+  }
+}
+
+/* ── Map section mobile layout ───────────────────────────────────────────────
+   The map section has a nested wrapper (.module.section) that adds its own
+   border + padding inside the section-card body. On mobile this creates three
+   stacked boxes. Remove the body padding so the map runs edge-to-edge within
+   the card, giving it visual weight as a spatial anchor on the page.
+   The outer section-card border-radius + overflow:hidden clip the corners.
+   Desktop (>640px) unchanged.
+   ─────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  #map .section-card__body {
+    padding: 0;
+  }
 }

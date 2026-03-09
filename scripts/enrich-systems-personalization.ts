@@ -136,6 +136,7 @@ async function main(): Promise<void> {
   const radiusRaw = typeof args.radiusMeters === "string" ? parseInt(args.radiusMeters, 10) : 10_000;
   const radiusMeters = Number.isFinite(radiusRaw) && radiusRaw > 0 ? radiusRaw : 10_000;
   const modules = parseModules(args.modules);
+  const minLength = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
 
   if (!cityFilter) {
     console.error("Error: --city is required");
@@ -183,6 +184,10 @@ async function main(): Promise<void> {
     const n = stateFilter.toLowerCase();
     systems = systems.filter((s) => !s.state || String(s.state).toLowerCase().includes(n));
     console.log(`  After state=\"${stateFilter}\": ${systems.length}`);
+  }
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) > minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
   }
   if (slugFilter) {
     const n = slugFilter.toLowerCase();

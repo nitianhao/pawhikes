@@ -69,7 +69,6 @@ export type TrailSegmentRow = {
   [key: string]: unknown;
 };
 
-// TODO: If this payload grows further, split into core+detail queries while preserving current page correctness.
 const PAGE_FIELDS = [
   "id",
   "amenitiesCounts",
@@ -79,23 +78,17 @@ const PAGE_FIELDS = [
   "bbox",
   "centroid",
   "city",
-  "computedAt",
   "county",
   "crowdClass",
-  "crowdLastComputedAt",
   "crowdProxyScore",
   "crowdReasons",
   "crowdSignals",
   "dogsAllowed",
-  "elevationComputedAt",
   "elevationGainFt",
   "elevationLossFt",
   "elevationMaxFt",
   "elevationMinFt",
   "elevationProfile",
-  "elevationProvider",
-  "elevationSampleCount",
-  "extDataset",
   "extSystemRef",
   "faqs",
   "gradeP50",
@@ -103,7 +96,6 @@ const PAGE_FIELDS = [
   "hazardPoints",
   "hazards",
   "hazardsClass",
-  "hazardsLastComputedAt",
   "hazardsReasons",
   "hazardsScore",
   "heatRisk",
@@ -111,15 +103,12 @@ const PAGE_FIELDS = [
   "highlightPoints",
   "highlightsByType",
   "highlightsCount",
-  "highlightsLastComputedAt",
   "leashDetails",
   "leashPolicy",
   "lengthMilesTotal",
   "litKnownSamples",
   "litPercentKnown",
   "litYesSamples",
-  "logisticsLastComputedAt",
-  "mudLastComputedAt",
   "mudRisk",
   "mudRiskReason",
   "mudRiskScore",
@@ -127,15 +116,12 @@ const PAGE_FIELDS = [
   "naturalSurfacePercent",
   "nightClass",
   "nightFriendly",
-  "nightLastComputedAt",
   "nightReasons",
   "nightScore",
   "nightWinterSignals",
   "parkingCapacityEstimate",
   "parkingCount",
   "parkingFeeKnown",
-  "personalization",
-  "personalizationLastComputedAt",
   "pavedPercentProxy",
   "policyConfidence",
   "policyMethod",
@@ -143,22 +129,18 @@ const PAGE_FIELDS = [
   "policySourceTitle",
   "policySourceUrl",
   "policyVerifiedAt",
-  "raw",
   "reactiveDogFriendly",
   "roughnessRisk",
   "segmentCount",
   "shadeClass",
-  "shadeLastComputedAt",
   "shadeProxyPercent",
   "shadeProxyScore",
   "shadeSources",
   "shadeProfile",
   "safety",
-  "safetyLastComputedAt",
   "accessPoints",
   "accessRules",
   "accessRulesClass",
-  "accessRulesLastComputedAt",
   "accessRulesReasons",
   "accessRulesScore",
   "bailoutClass",
@@ -169,10 +151,8 @@ const PAGE_FIELDS = [
   "routeType",
   "slug",
   "state",
-  "structureLastComputedAt",
   "streetLampCountNearTrail",
   "surfaceBreakdown",
-  "surfaceLastComputedAt",
   "surfaceSummary",
   "surfaceProfile",
   "swimAccessPoints",
@@ -180,20 +160,16 @@ const PAGE_FIELDS = [
   "swimAccessPointsCount",
   "swimLikely",
   "trailheadPOIs",
-  "waterLastComputedAt",
   "waterNearPercent",
   "waterNearScore",
   "waterProfile",
   "waterTypesNearby",
   "widthSummary",
   "winterClass",
-  "winterLastComputedAt",
   "winterLikelyMaintained",
   "winterReasons",
   "winterScore",
   "winterTagFound",
-  "trailHeadsLastLinkedAt",
-  "trailHeadsLinkReason",
   "seoContent",
 ] as const;
 
@@ -226,10 +202,6 @@ function warnIfLargePayload(trail: TrailSystemForPage | null): void {
   const kb = roughSizeKB(trail);
   if (kb > TRAIL_PAYLOAD_WARN_KB) {
     console.log(`[perf][warn] trail payload large ~${kb.toFixed(1)}kb`);
-  }
-  const rawKb = trail.raw != null ? roughSizeKB(trail.raw) : 0;
-  if (rawKb > TRAIL_PAYLOAD_WARN_KB) {
-    console.log(`[perf][warn] trail payload large ~raw:${rawKb.toFixed(1)}kb`);
   }
 }
 
@@ -603,7 +575,6 @@ export async function getTrailSystemAndHeadsForPage(lookup: TrailSystemLookup): 
 export async function getTrailSystemHeadsAndSegmentsForPage(lookup: TrailSystemLookup): Promise<{
   system: TrailSystemForPage | null;
   trailHeads: TrailHeadRow[];
-  trailSegments: TrailSegmentRow[];
   trailHeadSelection: TrailHeadMapSelection;
 }> {
   try {
@@ -612,7 +583,7 @@ export async function getTrailSystemHeadsAndSegmentsForPage(lookup: TrailSystemL
       typeof system?.slug === "string" && system.slug.trim().length > 0 ? system.slug.trim() : null;
 
     if (!system || !systemSlug) {
-      return { system, trailHeads: [], trailSegments: [], trailHeadSelection: "none" };
+      return { system, trailHeads: [], trailHeadSelection: "none" };
     }
 
     const label = `db:trailSegments page by systemSlug (${systemSlug})`;
@@ -629,13 +600,16 @@ export async function getTrailSystemHeadsAndSegmentsForPage(lookup: TrailSystemL
     );
     logPayloadIfEnabled(label, res);
 
+    // Segments fetched here are used only for server-side trailhead proximity filtering.
+    // Geometry is NOT returned to the page to keep the RSC payload small.
+    // The map component fetches its own segments (with geometry) via /api/segments on mount.
     const trailSegments = normalizeTrailSegments(res).filter(
       (segment) => String(segment?.systemSlug ?? "") === systemSlug
     );
     const { trailHeads, selection } = await resolveTrailHeadsForSystem(system, trailSegments);
 
-    return { system, trailHeads, trailSegments, trailHeadSelection: selection };
+    return { system, trailHeads, trailHeadSelection: selection };
   } catch {
-    return { system: null, trailHeads: [], trailSegments: [], trailHeadSelection: "none" };
+    return { system: null, trailHeads: [], trailHeadSelection: "none" };
   }
 }

@@ -1,9 +1,11 @@
 "use client";
 
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { AmenityPoint, ParkingPoint } from "@/lib/geo/amenities";
 import type { Highlight } from "@/lib/highlights/types";
 import type {
+  TrailMapBailoutSpot,
   TrailHeadSelectionMethod,
   TrailMapHead,
   TrailSegmentsMapSegment,
@@ -62,11 +64,11 @@ export type VetPoint = {
   lat: number;
   lon: number;
   distanceToCentroidMeters: number;
-  tags: Record<string, any>;
+  tags: Record<string, unknown>;
 };
 
 export function TrailSegmentsMapClient({
-  segments,
+  systemSlug,
   trailHeads,
   trailHeadSelection,
   amenityPoints,
@@ -74,8 +76,12 @@ export function TrailSegmentsMapClient({
   parkingPoints,
   highlights,
   vets,
+  bailoutSpots,
+  trailName,
+  cityName,
+  stateName,
 }: {
-  segments: TrailSegmentsMapSegment[];
+  systemSlug: string | null;
   trailHeads: TrailMapHead[];
   trailHeadSelection: TrailHeadSelectionMethod;
   amenityPoints: AmenityPoint[];
@@ -83,18 +89,81 @@ export function TrailSegmentsMapClient({
   parkingPoints: ParkingPoint[];
   highlights: Highlight[];
   vets: VetPoint[];
+  bailoutSpots: TrailMapBailoutSpot[];
+  trailName?: string | null;
+  cityName?: string | null;
+  stateName?: string | null;
 }) {
+  const [segments, setSegments] = useState<TrailSegmentsMapSegment[]>([]);
+  const [nearViewport, setNearViewport] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // Defer Leaflet bundle load + segment fetch until the map section is near the viewport.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setNearViewport(true); io.disconnect(); } },
+      { rootMargin: "300px" }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!nearViewport || !systemSlug) return;
+    let cancelled = false;
+    fetch(`/api/segments?systemSlug=${encodeURIComponent(systemSlug)}`)
+      .then((r) => r.json())
+      .then((data: { segments?: TrailSegmentsMapSegment[] }) => {
+        if (!cancelled) setSegments(data.segments ?? []);
+      })
+      .catch(() => {
+        // Map still renders with trailheads and amenities — trail lines appear when fetch resolves
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [nearViewport, systemSlug]);
+
   return (
-    <TrailSegmentsMapInner
-      segments={segments}
-      trailHeads={trailHeads}
-      trailHeadSelection={trailHeadSelection}
-      amenityPoints={amenityPoints}
-      amenityCoordinatesAvailable={amenityCoordinatesAvailable}
-      parkingPoints={parkingPoints}
-      highlights={highlights}
-      vets={vets}
-    />
+    <div ref={sentinelRef}>
+      {nearViewport ? (
+        <TrailSegmentsMapInner
+          segments={segments}
+          trailHeads={trailHeads}
+          trailHeadSelection={trailHeadSelection}
+          amenityPoints={amenityPoints}
+          amenityCoordinatesAvailable={amenityCoordinatesAvailable}
+          parkingPoints={parkingPoints}
+          highlights={highlights}
+          vets={vets}
+          bailoutSpots={bailoutSpots}
+          trailName={trailName}
+          cityName={cityName}
+          stateName={stateName}
+        />
+      ) : (
+        <div
+          style={{
+            marginTop: "1.25rem",
+            border: "1px solid #e5e7eb",
+            borderRadius: "0.75rem",
+            padding: "0.9rem",
+          }}
+        >
+          <h2 style={{ margin: "0 0 0.75rem", fontSize: "1.25rem", fontWeight: 700 }}>Map</h2>
+          <div
+            style={{
+              width: "100%",
+              height: "320px",
+              borderRadius: "0.75rem",
+              background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 }
 

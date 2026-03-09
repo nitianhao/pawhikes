@@ -33,6 +33,7 @@ const styles = {
     cursor: "pointer",
     listStyle: "none" as const,
     padding: "0.75rem 1rem",
+    minHeight: "44px",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
@@ -47,7 +48,7 @@ const styles = {
     fontSize: "0.875rem",
     color: "#374151",
   },
-  detailsContent: { padding: "1rem", paddingTop: "0.5rem" },
+  detailsContent: { padding: "1rem" },
 };
 
 export type SectionCardProps = {
@@ -64,7 +65,7 @@ export function SectionCard({
   title,
   summary,
   meta,
-  defaultOpen = false,
+  defaultOpen = true,
   children,
 }: SectionCardProps) {
   return (

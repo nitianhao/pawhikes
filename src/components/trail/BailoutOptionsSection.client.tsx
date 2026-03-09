@@ -271,6 +271,7 @@ export function BailoutOptionsSection({
     dead_end: false,
   });
   const [visibleCount, setVisibleCount] = useState(20);
+  const [showAllTop, setShowAllTop] = useState(false);
 
   const spotsForAnchor = useMemo(
     () => spots.map((spot) => deriveSpotForAnchor(spot, selectedAnchor)),
@@ -288,8 +289,9 @@ export function BailoutOptionsSection({
 
   const topExits = useMemo(() => {
     const withDistance = actionableSpots.filter((spot) => spot.distanceForSelectedAnchorM != null);
-    return sortSpotsBySelectedAnchorDistance(withDistance).slice(0, 5);
+    return sortSpotsBySelectedAnchorDistance(withDistance).slice(0, 4);
   }, [actionableSpots]);
+  const visibleTop = showAllTop ? topExits : topExits.slice(0, 2);
 
   const closestStart = useMemo(
     () => findClosestActionableDistance(spots, "start"),
@@ -302,6 +304,10 @@ export function BailoutOptionsSection({
   const closestEnd = useMemo(
     () => findClosestActionableDistance(spots, "end"),
     [spots]
+  );
+  const closestSelected = useMemo(
+    () => findClosestActionableDistance(spots, selectedAnchor),
+    [spots, selectedAnchor]
   );
 
   const filteredAll = useMemo(() => {
@@ -343,14 +349,40 @@ export function BailoutOptionsSection({
         </div>
       </div>
       <p style={S.helperText}>
-        If you need to shorten the hike, these are the nearest exits/connectors. Exit points near the trail.
-        Distances are from the selected anchor (start/end/midpoint).
+        Fast exits if you need to shorten the route.
       </p>
 
+      <div style={S.statsGrid}>
+        <span style={S.statPill}>Actionable: {actionableSpots.length}</span>
+        <span style={S.statPill}>Dead ends: {deadEndOnlyCount}</span>
+        <span style={S.statPill}>
+          Closest {selectedAnchorLabel}: {closestSelected == null ? "—" : formatDistanceShort(closestSelected)}
+        </span>
+      </div>
+
       <details style={S.detailsWrap}>
-        <summary style={S.detailsSummary}>How is this calculated?</summary>
+        <summary style={S.detailsSummary}>Method + full metrics</summary>
         <div style={S.detailsBody}>
           <p style={S.mutedText}>Based on trail graph connectivity and nearby exits.</p>
+          <div style={S.statsGrid}>
+            <span style={S.statPill}>Total spots: {spots.length}</span>
+            <span style={S.statPill}>Actionable exits: {actionableSpots.length}</span>
+            <span style={S.statPill}>Dead ends: {deadEndOnlyCount}</span>
+            <span style={S.statPill}>
+              Closest near Start: {closestStart == null ? "—" : formatDistanceShort(closestStart)}
+            </span>
+            <span style={S.statPill}>
+              Closest near Midpoint: {closestMidpoint == null ? "—" : formatDistanceShort(closestMidpoint)}
+            </span>
+            <span style={S.statPill}>
+              Closest near End: {closestEnd == null ? "—" : formatDistanceShort(closestEnd)}
+            </span>
+          </div>
+          {points.length > 0 && (
+            <div style={{ marginTop: "0.4rem", marginBottom: "0.1rem" }}>
+              <BailoutCoverageChart points={points} totalMiles={lengthMilesTotal} />
+            </div>
+          )}
           {reasons.length > 0 ? (
             <ul style={S.bullets}>
               {reasons.map((reason) => (
@@ -365,39 +397,7 @@ export function BailoutOptionsSection({
         </div>
       </details>
 
-      <div style={S.statsGrid}>
-        <span style={S.statPill}>Total spots: {spots.length}</span>
-        <span style={S.statPill}>Actionable exits: {actionableSpots.length}</span>
-        <span style={S.statPill}>Dead ends: {deadEndOnlyCount}</span>
-        <span style={S.statPill}>
-          Closest near Start: {closestStart == null ? "—" : formatDistanceShort(closestStart)}
-        </span>
-        <span style={S.statPill}>
-          Closest near Midpoint: {closestMidpoint == null ? "—" : formatDistanceShort(closestMidpoint)}
-        </span>
-        <span style={S.statPill}>
-          Closest near End: {closestEnd == null ? "—" : formatDistanceShort(closestEnd)}
-        </span>
-      </div>
-
-      {/* Spatial coverage chart */}
-      {points.length > 0 && (
-        <div style={{ marginTop: "1rem", marginBottom: "0.25rem" }}>
-          <div style={{
-            fontSize: "0.72rem",
-            fontWeight: 700,
-            letterSpacing: "0.05em",
-            textTransform: "uppercase" as const,
-            color: "#6b7280",
-            marginBottom: "0.4rem",
-          }}>
-            Exit coverage along the trail
-          </div>
-          <BailoutCoverageChart points={points} totalMiles={lengthMilesTotal} />
-        </div>
-      )}
-
-      <div style={{ ...S.segmentWrap, marginTop: "1rem" }} role="tablist" aria-label="Bailout anchor">
+      <div style={{ ...S.segmentWrap, marginTop: "0.45rem" }} role="tablist" aria-label="Bailout anchor">
         {ANCHOR_OPTIONS.map((opt) => (
           <button
             key={opt.id}
@@ -414,17 +414,22 @@ export function BailoutOptionsSection({
 
       <div style={{ marginTop: "0.7rem" }}>
         <h3 style={S.subTitle}>Top exits near {selectedAnchorLabel}</h3>
-        {topExits.length === 0 ? (
+        {visibleTop.length === 0 ? (
           <p style={S.mutedText}>
             No mapped exits near {selectedAnchorLabel}. Try switching to a different anchor.
           </p>
         ) : (
           <div style={S.listWrap}>
-            {topExits.map((spot) => (
+            {visibleTop.map((spot) => (
               <SpotRow key={`${selectedAnchor}-${spot.id}`} spot={spot} />
             ))}
           </div>
         )}
+        {topExits.length > 2 ? (
+          <button type="button" style={{ ...S.showMoreBtn, marginTop: "0.25rem" }} onClick={() => setShowAllTop((v) => !v)}>
+            {showAllTop ? "Show fewer exits" : `Show ${topExits.length - 2} more`}
+          </button>
+        ) : null}
       </div>
 
       <div style={S.allWrap}>
@@ -517,14 +522,14 @@ export function BailoutOptionsSection({
 
 const S = {
   section: {
-    marginTop: "1.25rem",
+    marginTop: 0,
     border: "1px solid #e5e7eb",
-    borderRadius: "0.75rem",
-    padding: "0.9rem",
+    borderRadius: "0.7rem",
+    padding: "0.75rem",
   } as const,
   title: {
     margin: 0,
-    fontSize: "1.2rem",
+    fontSize: "1rem",
     fontWeight: 600,
     color: "#111827",
   } as const,
@@ -536,8 +541,8 @@ const S = {
     flexWrap: "wrap" as const,
   } as const,
   helperText: {
-    margin: "0.35rem 0 0",
-    fontSize: "0.82rem",
+    margin: "0.25rem 0 0",
+    fontSize: "0.74rem",
     color: "#6b7280",
   } as const,
   headlinePills: {
@@ -553,39 +558,39 @@ const S = {
     color: "#334155",
     background: "#fff",
   } as const,
-  detailsWrap: { marginTop: "0.55rem" } as const,
+  detailsWrap: { marginTop: "0.3rem" } as const,
   detailsSummary: {
     cursor: "pointer",
-    fontSize: "0.8rem",
+    fontSize: "0.72rem",
     fontWeight: 600,
     color: "#334155",
   } as const,
-  detailsBody: { marginTop: "0.45rem" } as const,
+  detailsBody: { marginTop: "0.25rem" } as const,
   bullets: { margin: "0.35rem 0 0", paddingLeft: "1.15rem" } as const,
   bullet: { margin: "0.16rem 0", color: "#475569", fontSize: "0.8rem" } as const,
-  mutedText: { margin: 0, fontSize: "0.82rem", color: "#475569" } as const,
+  mutedText: { margin: 0, fontSize: "0.74rem", color: "#475569" } as const,
   mutedTiny: { margin: 0, fontSize: "0.75rem", color: "#64748b" } as const,
 
   statsGrid: {
-    marginTop: "0.65rem",
+    marginTop: "0.25rem",
     display: "flex",
     flexWrap: "wrap" as const,
     gap: "0.35rem",
   } as const,
   statPill: {
     border: "1px solid #e2e8f0",
-    borderRadius: "0.5rem",
-    padding: "0.22rem 0.5rem",
-    fontSize: "0.76rem",
+    borderRadius: "999px",
+    padding: "0.14rem 0.4rem",
+    fontSize: "0.68rem",
     color: "#334155",
     background: "#f8fafc",
   } as const,
 
   segmentWrap: {
-    marginTop: "0.7rem",
+    marginTop: "0.4rem",
     display: "inline-flex",
     border: "1px solid #e5e7eb",
-    borderRadius: "0.55rem",
+    borderRadius: "0.45rem",
     overflow: "hidden",
   } as const,
   segmentBtn: {
@@ -593,8 +598,8 @@ const S = {
     borderRight: "1px solid #e5e7eb",
     background: "#fff",
     color: "#475569",
-    padding: "0.35rem 0.65rem",
-    fontSize: "0.82rem",
+    padding: "0.24rem 0.5rem",
+    fontSize: "0.72rem",
     cursor: "pointer",
   } as const,
   segmentBtnActive: {
@@ -602,29 +607,29 @@ const S = {
     borderRight: "1px solid #e5e7eb",
     background: "#eef2ff",
     color: "#4338ca",
-    padding: "0.35rem 0.65rem",
-    fontSize: "0.82rem",
+    padding: "0.24rem 0.5rem",
+    fontSize: "0.72rem",
     fontWeight: 600,
     cursor: "pointer",
   } as const,
 
-  subTitle: { margin: "0 0 0.35rem", fontSize: "0.95rem", color: "#111827" } as const,
+  subTitle: { margin: "0 0 0.25rem", fontSize: "0.8rem", color: "#111827" } as const,
   listWrap: {
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.35rem",
+    gap: "0.25rem",
   } as const,
   rowWrap: {
     border: "1px solid #e2e8f0",
-    borderRadius: "0.55rem",
+    borderRadius: "0.5rem",
     background: "#fff",
     overflow: "hidden",
   } as const,
   rowTop: {
     display: "flex",
     justifyContent: "space-between",
-    gap: "0.75rem",
-    padding: "0.45rem 0.55rem",
+    gap: "0.55rem",
+    padding: "0.3rem 0.4rem",
     flexWrap: "wrap" as const,
   } as const,
   rowLeft: {
@@ -638,8 +643,8 @@ const S = {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    width: "30px",
-    height: "30px",
+    width: "24px",
+    height: "24px",
     borderRadius: "50%",
     background: "#f8fafc",
     flexShrink: 0,
@@ -647,7 +652,7 @@ const S = {
   rowText: { minWidth: 0, flex: 1 } as const,
   rowTitle: {
     margin: 0,
-    fontSize: "0.88rem",
+    fontSize: "0.76rem",
     fontWeight: 600,
     color: "#111827",
     overflow: "hidden",
@@ -656,11 +661,11 @@ const S = {
   } as const,
   rowSubtitle: {
     margin: "0.1rem 0 0",
-    fontSize: "0.78rem",
+    fontSize: "0.68rem",
     color: "#6b7280",
   } as const,
   badgesWrap: {
-    marginTop: "0.2rem",
+    marginTop: "0.1rem",
     display: "flex",
     gap: "0.3rem",
     flexWrap: "wrap" as const,
@@ -668,8 +673,8 @@ const S = {
   kindBadge: {
     border: "1px solid #e2e8f0",
     borderRadius: "999px",
-    padding: "0.08rem 0.4rem",
-    fontSize: "0.68rem",
+    padding: "0.06rem 0.3rem",
+    fontSize: "0.62rem",
     color: "#475569",
     background: "#fff",
   } as const,
@@ -685,34 +690,34 @@ const S = {
     background: "#eff6ff",
     color: "#1d4ed8",
     borderRadius: "999px",
-    padding: "0.15rem 0.48rem",
-    fontSize: "0.72rem",
+    padding: "0.12rem 0.38rem",
+    fontSize: "0.64rem",
     fontWeight: 600,
   } as const,
   inlineBtn: {
     display: "inline-flex",
     alignItems: "center",
     gap: "0.22rem",
-    height: "28px",
+    height: "22px",
     borderRadius: "0.42rem",
     border: "1px solid #e5e7eb",
     background: "#fff",
     color: "#334155",
     cursor: "pointer",
     textDecoration: "none",
-    padding: "0 0.52rem",
-    fontSize: "0.75rem",
+    padding: "0 0.36rem",
+    fontSize: "0.64rem",
   } as const,
   inlineBtnDisabled: {
     display: "inline-flex",
     alignItems: "center",
-    height: "28px",
+    height: "22px",
     borderRadius: "0.42rem",
     border: "1px solid #e5e7eb",
     background: "#f8fafc",
     color: "#94a3b8",
-    padding: "0 0.52rem",
-    fontSize: "0.75rem",
+    padding: "0 0.36rem",
+    fontSize: "0.64rem",
   } as const,
   detailPanel: {
     borderTop: "1px solid #f1f5f9",
@@ -763,14 +768,14 @@ const S = {
     overflow: "auto",
   } as const,
 
-  allWrap: { marginTop: "0.8rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.7rem" } as const,
+  allWrap: { marginTop: "0.45rem", borderTop: "1px solid #f1f5f9", paddingTop: "0.4rem" } as const,
   expandBtn: {
     border: "1px solid #e2e8f0",
     borderRadius: "0.5rem",
     background: "#fff",
     color: "#334155",
-    padding: "0.35rem 0.58rem",
-    fontSize: "0.82rem",
+    padding: "0.22rem 0.45rem",
+    fontSize: "0.72rem",
     fontWeight: 600,
     cursor: "pointer",
     display: "inline-flex",
@@ -778,10 +783,10 @@ const S = {
     gap: "0.25rem",
   } as const,
   allBody: {
-    marginTop: "0.55rem",
+    marginTop: "0.35rem",
     display: "flex",
     flexDirection: "column" as const,
-    gap: "0.55rem",
+    gap: "0.35rem",
   } as const,
   searchWrap: {
     display: "inline-flex",
@@ -790,14 +795,14 @@ const S = {
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
     background: "#fff",
-    padding: "0.35rem 0.55rem",
+    padding: "0.25rem 0.4rem",
   } as const,
   searchInput: {
     border: "none",
     outline: "none",
     width: "100%",
-    minWidth: "250px",
-    fontSize: "0.84rem",
+    minWidth: "180px",
+    fontSize: "0.75rem",
     color: "#111827",
     background: "transparent",
   } as const,
@@ -812,8 +817,8 @@ const S = {
     borderRadius: "999px",
     background: "#fff",
     color: "#475569",
-    padding: "0.2rem 0.5rem",
-    fontSize: "0.75rem",
+    padding: "0.14rem 0.38rem",
+    fontSize: "0.68rem",
     cursor: "pointer",
   } as const,
   filterChipActive: {
@@ -821,8 +826,8 @@ const S = {
     borderRadius: "999px",
     background: "#eef2ff",
     color: "#4338ca",
-    padding: "0.2rem 0.5rem",
-    fontSize: "0.75rem",
+    padding: "0.14rem 0.38rem",
+    fontSize: "0.68rem",
     cursor: "pointer",
   } as const,
   sortWrap: {
@@ -832,15 +837,15 @@ const S = {
     border: "1px solid #e5e7eb",
     borderRadius: "0.5rem",
     background: "#fff",
-    padding: "0.26rem 0.45rem",
+    padding: "0.18rem 0.34rem",
     color: "#475569",
-    fontSize: "0.75rem",
+    fontSize: "0.68rem",
   } as const,
   sortSelect: {
     border: "none",
     outline: "none",
     background: "transparent",
-    fontSize: "0.75rem",
+    fontSize: "0.68rem",
     color: "#111827",
   } as const,
   showMoreBtn: {
@@ -850,8 +855,8 @@ const S = {
     background: "#eff6ff",
     color: "#1d4ed8",
     cursor: "pointer",
-    padding: "0.3rem 0.58rem",
-    fontSize: "0.78rem",
+    padding: "0.2rem 0.4rem",
+    fontSize: "0.68rem",
     fontWeight: 600,
   } as const,
 } as const;

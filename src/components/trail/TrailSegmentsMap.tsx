@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import "leaflet/dist/leaflet.css";
+import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
 import { divIcon, type LatLngBoundsExpression, type LatLngExpression } from "leaflet";
 import {
   CircleMarker,
@@ -23,6 +25,7 @@ import {
 import { minDistancePointToRouteMeters } from "@/lib/geo/routeDistance";
 import type { AmenityPoint, ParkingPoint } from "@/lib/geo/amenities";
 import type { Highlight } from "@/lib/highlights/types";
+import { trailheadImageAlt } from "@/lib/seo/media";
 import type { VetPoint } from "./TrailSegmentsMap.client";
 import styles from "./TrailSegmentsMap.module.css";
 
@@ -83,7 +86,16 @@ type RenderAmenityPoint = AmenityPoint & {
   distanceToRouteMeters: number | null;
 };
 
-type ActiveOverlay = "amenities" | "highlights" | "vets" | null;
+export type TrailMapBailoutSpot = {
+  id: string;
+  lat: number;
+  lng: number;
+  title: string;
+  primaryKind: string;
+  kinds: string[];
+};
+
+type ActiveOverlay = "amenities" | "highlights" | "vets" | "bailouts" | null;
 
 function formatCoord(point: LatLngTuple): string {
   return `${point[0].toFixed(5)}, ${point[1].toFixed(5)}`;
@@ -250,6 +262,12 @@ function highlightKindColor(kind: string): string {
   }
 }
 
+function bailoutKindColor(primaryKind: string): string {
+  if (primaryKind === "entrance") return "#047857";
+  if (primaryKind === "intersection") return "#4f46e5";
+  return "#b45309";
+}
+
 function nearestRouteVertex(
   point: LatLngTuple,
   routePaths: Array<{ points: LatLngTuple[] }>
@@ -369,6 +387,10 @@ export function TrailSegmentsMap({
   parkingPoints,
   highlights,
   vets,
+  bailoutSpots,
+  trailName,
+  cityName,
+  stateName,
 }: {
   segments: TrailSegmentsMapSegment[];
   trailHeads: TrailMapHead[];
@@ -378,65 +400,90 @@ export function TrailSegmentsMap({
   parkingPoints: ParkingPoint[];
   highlights: Highlight[];
   vets: VetPoint[];
+  bailoutSpots: TrailMapBailoutSpot[];
+  trailName?: string | null;
+  cityName?: string | null;
+  stateName?: string | null;
 }) {
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
 
-  const stitchResult = segmentsToStitchedPaths(segments, {
-    snapToleranceMeters: SNAP_TOLERANCE_METERS,
-    maxJoinMeters: MAX_JOIN_METERS,
-  });
-  const fallbackPaths = pointsToFallbackPaths(stitchResult.parts);
-  const partsById = new Map(stitchResult.parts.map((part) => [part.id, part]));
-  const suspiciousPaths = stitchResult.stitchedPaths.filter((path) => path.suspect);
-  const healthyPaths = stitchResult.stitchedPaths.filter((path) => !path.suspect);
-  const suspectFallbackPaths = suspiciousPaths.flatMap((path) =>
-    path.partIds.flatMap((partId, index) => {
-      const part = partsById.get(partId);
-      if (!part) return [];
-      return [
-        {
-          id: `${path.id}-part-${index + 1}`,
-          points: part.points,
-          partIds: [part.id],
-          approxMiles: part.lengthMiles ?? 0,
-          isPrimary: false,
-          maxStepMeters: path.maxStepMeters,
-          suspect: false,
-        } satisfies StitchedPath,
-      ];
-    })
+  // ── Segment stitching (depends only on segments) ──────────────────────────
+  const { stitchResult, renderedPaths, firstPoint, routeBounds } = useMemo(() => {
+    const sr = segmentsToStitchedPaths(segments, {
+      snapToleranceMeters: SNAP_TOLERANCE_METERS,
+      maxJoinMeters: MAX_JOIN_METERS,
+    });
+    const fallback = pointsToFallbackPaths(sr.parts);
+    const byId = new Map(sr.parts.map((part) => [part.id, part]));
+    const suspicious = sr.stitchedPaths.filter((path) => path.suspect);
+    const healthy = sr.stitchedPaths.filter((path) => !path.suspect);
+    const suspectFallback = suspicious.flatMap((path) =>
+      path.partIds.flatMap((partId, index) => {
+        const part = byId.get(partId);
+        if (!part) return [];
+        return [
+          {
+            id: `${path.id}-part-${index + 1}`,
+            points: part.points,
+            partIds: [part.id],
+            approxMiles: part.lengthMiles ?? 0,
+            isPrimary: false,
+            maxStepMeters: path.maxStepMeters,
+            suspect: false,
+          } satisfies StitchedPath,
+        ];
+      })
+    );
+    const rendered =
+      sr.stats.mode === "fallback"
+        ? fallback
+        : healthy.length === 0 && suspectFallback.length === 0
+          ? fallback
+          : [...healthy, ...suspectFallback];
+    return {
+      stitchResult: sr,
+      renderedPaths: rendered,
+      firstPoint: firstPointFromPaths(rendered),
+      routeBounds: polylineBoundsFromPaths(rendered),
+    };
+  }, [segments]);
+
+  // ── Trailhead validation (depends on trailHeads + renderedPaths) ───────────
+  const { normalizedTrailHeads, trailHeadValidation, trailHeadBounds } = useMemo(() => {
+    const candidates = normalizeTrailHeads(trailHeads);
+    const validation = validateTrailHeadsAgainstRoute(candidates, renderedPaths);
+    return {
+      normalizedTrailHeads: validation.kept,
+      trailHeadValidation: validation,
+      trailHeadBounds: buildBoundsFromPoints(validation.kept.map((h) => h.point)),
+    };
+  }, [trailHeads, renderedPaths]);
+
+  // ── Amenity overlay (depends on amenityPoints + renderedPaths) ────────────
+  const amenityOverlay = useMemo(
+    () => buildAmenityOverlay(amenityPoints, renderedPaths),
+    [amenityPoints, renderedPaths]
   );
-  const renderedPaths =
-    stitchResult.stats.mode === "fallback"
-      ? fallbackPaths
-      : healthyPaths.length === 0 && suspectFallbackPaths.length === 0
-        ? fallbackPaths
-        : [...healthyPaths, ...suspectFallbackPaths];
-  const firstPoint = firstPointFromPaths(renderedPaths);
-  const normalizedTrailHeadCandidates = normalizeTrailHeads(trailHeads);
-  const trailHeadValidation = validateTrailHeadsAgainstRoute(
-    normalizedTrailHeadCandidates,
-    renderedPaths
+
+  const amenityBounds = useMemo(
+    () => buildBoundsFromPoints(amenityOverlay.plottedAmenityPoints.map((a) => a.point)),
+    [amenityOverlay]
   );
-  const normalizedTrailHeads = trailHeadValidation.kept;
-  const amenityOverlay = buildAmenityOverlay(amenityPoints, renderedPaths);
-  const routeBounds = polylineBoundsFromPaths(renderedPaths);
-  const trailHeadBounds = buildBoundsFromPoints(normalizedTrailHeads.map((head) => head.point));
-  const amenityBounds = buildBoundsFromPoints(
-    amenityOverlay.plottedAmenityPoints.map((amenity) => amenity.point)
-  );
+
   const bounds = routeBounds ?? trailHeadBounds ?? amenityBounds;
 
   const initialCenter =
     firstPoint ?? normalizedTrailHeads[0]?.point ?? amenityOverlay.plottedAmenityPoints[0]?.point ?? null;
 
-  const validHighlights = highlights.filter(
-    (h) => !h.isIncomplete && !(h.lat === 0 && h.lng === 0)
+  const validHighlights = useMemo(
+    () => highlights.filter((h) => !h.isIncomplete && !(h.lat === 0 && h.lng === 0)),
+    [highlights]
   );
 
   const hasAmenities = amenityOverlay.plottedAmenityPoints.length > 0;
   const hasHighlights = validHighlights.length > 0;
   const hasVets = vets.length > 0;
+  const hasBailouts = bailoutSpots.length > 0;
 
   useEffect(() => {
     if (!DEBUG_MAP) return;
@@ -481,14 +528,14 @@ export function TrailSegmentsMap({
     );
   }
 
-  function toggleOverlay(overlay: "amenities" | "highlights" | "vets") {
+  function toggleOverlay(overlay: "amenities" | "highlights" | "vets" | "bailouts") {
     setActiveOverlay((prev) => (prev === overlay ? null : overlay));
   }
 
   return (
     <section className={styles.section}>
       <h2 className={styles.heading}>Map</h2>
-      {(hasAmenities || hasHighlights || hasVets) && (
+      {(hasAmenities || hasHighlights || hasVets || hasBailouts) && (
         <div
           style={{
             display: "flex",
@@ -555,6 +602,26 @@ export function TrailSegmentsMap({
               }}
             >
               Vets ({vets.length})
+            </button>
+          )}
+          {hasBailouts && (
+            <button
+              type="button"
+              onClick={() => toggleOverlay("bailouts")}
+              style={{
+                padding: "0.3rem 0.75rem",
+                borderRadius: "9999px",
+                fontSize: "0.8rem",
+                fontWeight: 500,
+                border: "1px solid",
+                cursor: "pointer",
+                lineHeight: 1.4,
+                background: activeOverlay === "bailouts" ? "#dcfce7" : "#f8fafc",
+                borderColor: activeOverlay === "bailouts" ? "#86efac" : "#d1d5db",
+                color: activeOverlay === "bailouts" ? "#15803d" : "#374151",
+              }}
+            >
+              Bailout exits ({bailoutSpots.length})
             </button>
           )}
         </div>
@@ -649,9 +716,17 @@ export function TrailSegmentsMap({
                 <div className={styles.popup}>
                   {head.googlePhotoUri ? (
                     <div style={{ marginBottom: "0.5rem" }}>
-                      <img
+                      <Image
                         src={head.googlePhotoUri}
-                        alt=""
+                        alt={trailheadImageAlt({
+                          trailheadName: label,
+                          trailName,
+                          cityName,
+                          stateName,
+                        })}
+                        width={120}
+                        height={80}
+                        sizes="120px"
                         style={{
                           width: "100%",
                           maxWidth: "120px",
@@ -782,6 +857,27 @@ export function TrailSegmentsMap({
                 </Marker>
               );
             })
+          : null}
+        {activeOverlay === "bailouts"
+          ? bailoutSpots.map((spot) => (
+              <Marker
+                key={spot.id}
+                position={[spot.lat, spot.lng]}
+                icon={makeCircleIcon(bailoutKindColor(spot.primaryKind), 18)}
+              >
+                <Popup>
+                  <div className={styles.popup}>
+                    <strong>{spot.title}</strong>
+                    <p>
+                      {spot.kinds
+                        .map((kind) => kind.replace(/_/g, " "))
+                        .map((kind) => kind.charAt(0).toUpperCase() + kind.slice(1))
+                        .join(" · ")}
+                    </p>
+                  </div>
+                </Popup>
+              </Marker>
+            ))
           : null}
       </MapContainer>
     </section>

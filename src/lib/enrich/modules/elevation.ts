@@ -175,6 +175,47 @@ function flattenCoordsFromGeometry(geometry: unknown): Coord[] {
   return out;
 }
 
+/** Greedy nearest-neighbour ordering of segments to minimise spatial gaps.
+ *  Returns { coords, reversed }[] in the order they should be traversed.
+ */
+function orderSegmentCoords(segments: SegmentLike[]): Array<{ coords: Coord[]; reversed: boolean }> {
+  const parsed = segments
+    .map(seg => ({ coords: flattenCoordsFromGeometry(seg.geometry) }))
+    .filter(s => s.coords.length >= 2);
+
+  if (parsed.length === 0) return [];
+  if (parsed.length === 1) return [{ coords: parsed[0].coords, reversed: false }];
+
+  // Start with westernmost segment (most negative lon)
+  let bestStart = 0;
+  let bestLon = Infinity;
+  for (let i = 0; i < parsed.length; i++) {
+    const lon = parsed[i].coords[0][0];
+    if (lon < bestLon) { bestLon = lon; bestStart = i; }
+  }
+
+  const remaining = parsed.slice();
+  const result: Array<{ coords: Coord[]; reversed: boolean }> = [];
+  result.push({ coords: remaining.splice(bestStart, 1)[0].coords, reversed: false });
+
+  while (remaining.length > 0) {
+    const prev = result[result.length - 1];
+    const curEnd = prev.reversed ? prev.coords[0] : prev.coords[prev.coords.length - 1];
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    let bestReverse = false;
+    for (let i = 0; i < remaining.length; i++) {
+      const c = remaining[i].coords;
+      const dFwd = haversineMeters(curEnd, c[0]);
+      const dRev = haversineMeters(curEnd, c[c.length - 1]);
+      if (dFwd < bestDist) { bestDist = dFwd; bestIdx = i; bestReverse = false; }
+      if (dRev < bestDist) { bestDist = dRev; bestIdx = i; bestReverse = true; }
+    }
+    result.push({ coords: remaining.splice(bestIdx, 1)[0].coords, reversed: bestReverse });
+  }
+  return result;
+}
+
 function keyForSystem(system: SystemLike): string {
   return String(system.id ?? system.extSystemRef ?? system.slug ?? "unknown-system");
 }
@@ -183,7 +224,8 @@ function buildFingerprint(segments: SegmentLike[]): string {
   const parts = segments
     .map((s) => `${String(s.id ?? "")}:${String(s.modifiedDate ?? "")}`)
     .sort();
-  return createHash("sha1").update(parts.join("|"), "utf8").digest("hex");
+  // v2: segments are now spatially ordered before sampling (fixes inflated gain on multi-segment trails)
+  return createHash("sha1").update("v2|" + parts.join("|"), "utf8").digest("hex");
 }
 
 function chooseProvider(ctx: ElevationContext): { provider: "opentopodata" | "open-elevation"; url: string } {
@@ -403,9 +445,10 @@ export async function enrichSystemElevation(system: SystemLike, ctx: ElevationCo
     };
   }
 
+  const orderedSegs = orderSegmentCoords(systemSegments);
   const pathCoords: Coord[] = [];
-  for (const seg of systemSegments) {
-    pathCoords.push(...flattenCoordsFromGeometry(seg.geometry));
+  for (const seg of orderedSegs) {
+    pathCoords.push(...(seg.reversed ? [...seg.coords].reverse() : seg.coords));
   }
 
   const deduped = dedupeConsecutive(pathCoords);
