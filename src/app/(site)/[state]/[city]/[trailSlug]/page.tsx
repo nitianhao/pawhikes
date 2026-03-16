@@ -56,6 +56,7 @@ import {
   isWellFormedStateParam,
 } from "@/lib/seo/indexation";
 import { getTrailSystemsIndex } from "@/lib/data/trailSystemsIndex";
+import { resolveRelatedTrails } from "@/lib/trails/relatedTrails";
 import { trailDescription as trailMetaDescription, trailTitle as trailMetaTitle } from "@/lib/seo/ctr";
 export const revalidate = 900;
 
@@ -638,6 +639,14 @@ export default async function TrailDetailPage({
         ? system.faqs
         : []
   );
+  const relatedTrails = resolveRelatedTrails({
+    currentTrail: {
+      id: String(system?.id ?? ""),
+      city: model.identity.city ?? canonicalCity,
+      state: model.identity.state ?? canonicalState,
+    },
+    candidates: await getTrailSystemsIndex(),
+  });
   const faqSchemaNode = faqPageSchema({
     path: canonicalPath,
     items: faqItems.map((faq) => ({ question: faq.q, answer: faq.a })),
@@ -892,6 +901,7 @@ export default async function TrailDetailPage({
       <RelatedTrailsSection
         city={model.identity.city ?? ""}
         state={model.identity.state ?? ""}
+        relatedTrails={relatedTrails}
       />
     </div>
   );

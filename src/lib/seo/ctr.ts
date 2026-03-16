@@ -61,9 +61,9 @@ export function cityTitle(input: {
   trailCount: number;
 }): string {
   if (input.trailCount > 0) {
-    return `Dog-Friendly Trails in ${input.cityName}, ${input.stateCode}`;
+    return `Dog-Friendly Trails, Hikes & Walking Paths in ${input.cityName}, ${input.stateCode}`;
   }
-  return `${input.cityName}, ${input.stateCode} Dog Hiking Trails`;
+  return `Dog-Friendly Trails and Hikes in ${input.cityName}, ${input.stateCode}`;
 }
 
 export function cityDescription(input: {
@@ -74,21 +74,17 @@ export function cityDescription(input: {
   hasWaterSignals: boolean;
   hasShadeSignals: boolean;
 }): string {
-  const parts: string[] = [];
-  if (input.trailCount > 0) {
-    parts.push(`${input.trailCount} dog-friendly trails in ${input.cityName}, ${input.stateName}.`);
-  } else {
-    parts.push(`Dog-friendly trail directory for ${input.cityName}, ${input.stateName}.`);
-  }
+  const lead = input.trailCount > 0
+    ? `Compare ${input.trailCount} dog-friendly trails, hikes, and walking paths in ${input.cityName}, ${input.stateName}.`
+    : `Compare dog-friendly trails, hikes, and walking paths in ${input.cityName}, ${input.stateName}.`;
 
-  const comparators: string[] = [];
-  if (input.hasLeashSignals) comparators.push("leash rules");
-  if (input.hasShadeSignals) comparators.push("shade and heat");
-  if (input.hasWaterSignals) comparators.push("water access");
-  comparators.push("surface and access logistics");
+  const attributes: string[] = [];
+  if (input.hasLeashSignals) attributes.push("leash rules");
+  if (input.hasShadeSignals) attributes.push("shade");
+  if (input.hasWaterSignals) attributes.push("water access");
+  attributes.push("distance and terrain");
 
-  parts.push(`Compare trails by ${comparators.join(", ")}.`);
-  return parts.join(" ");
+  return `${lead} Review ${attributes.join(", ")} to choose the best fit for your dog.`;
 }
 
 function trailAttributePhrase(input: {

@@ -14,7 +14,7 @@ import { CityTrailCardList } from "@/components/city/CityTrailCardList.client";
 import type { TrailCardData } from "@/components/city/CityTrailCardList.client";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { JsonLd } from "@/components/seo/JsonLd";
-import { breadcrumbSchema, collectionPageSchema } from "@/lib/seo/schema";
+import { breadcrumbSchema, collectionPageSchema, faqPageSchema, itemListSchema } from "@/lib/seo/schema";
 import { cityBrowseHelp, cityIntro } from "@/lib/seo/contentTemplates";
 import { resolveStateName } from "@/lib/seo/entities";
 import { pickDirectoryOgImage } from "@/lib/seo/media";
@@ -27,6 +27,7 @@ import { cityDescription, cityTitle } from "@/lib/seo/ctr";
 import { getTrailSystemsIndex, type TrailSystemsIndexRecord } from "@/lib/data/trailSystemsIndex";
 import { buildDogTypePath, evaluateDogTypeIntentsForCity } from "@/lib/seo/dogType";
 import { buildGeoClusterPath, getGeoClustersForCity } from "@/lib/seo/geographic";
+import { buildLongTailCityPath, evaluateLongTailIntentsForCity } from "@/lib/seo/longTail";
 
 type TrailSystemRecord = TrailSystemsIndexRecord;
 
@@ -76,6 +77,20 @@ async function loadTrailSystems(): Promise<TrailSystemRecord[]> {
 function formatDistance(miles: unknown): string {
   if (typeof miles !== "number" || !Number.isFinite(miles) || miles <= 0) return "—";
   return `${miles.toFixed(1)} mi`;
+}
+
+function surfaceSignalFromSummary(surfaceSummary: unknown): string | null {
+  if (typeof surfaceSummary === "string" && surfaceSummary.trim().length > 0) {
+    return surfaceSummary.trim().toLowerCase();
+  }
+  if (!surfaceSummary || typeof surfaceSummary !== "object" || Array.isArray(surfaceSummary)) {
+    return null;
+  }
+  const summary = surfaceSummary as { dominant?: unknown };
+  if (typeof summary.dominant === "string" && summary.dominant.trim().length > 0) {
+    return summary.dominant.trim().toLowerCase();
+  }
+  return null;
 }
 
 function filterCitySystems(
@@ -315,6 +330,7 @@ export default async function CityPage({
       waterNearPct:  typeof trail.waterNearPercent === "number" && Number.isFinite(trail.waterNearPercent) ? trail.waterNearPercent : null,
       swimLikely:    typeof trail.swimLikely === "boolean" ? trail.swimLikely : null,
       elevationGainFt: typeof trail.elevationGainFt === "number" && Number.isFinite(trail.elevationGainFt) ? trail.elevationGainFt : null,
+      surfaceSignal: surfaceSignalFromSummary(trail.surfaceSummary),
     };
   });
   const dogTypeLinks = evaluateDogTypeIntentsForCity(trailsInCity)
@@ -323,6 +339,63 @@ export default async function CityPage({
   const geoLinks = getGeoClustersForCity({ cityName: cityLabel, trails: trailsInCity })
     .filter((cluster) => cluster.indexable)
     .slice(0, 2);
+  const dogNeedLinks = evaluateLongTailIntentsForCity(trailsInCity)
+    .filter((entry) => entry.indexable)
+    .slice(0, 3);
+  const trailListSchema = itemListSchema({
+    name: `Dog-friendly trails in ${cityLabel}, ${stateName}`,
+    path: cityPath,
+    items: trailCards.map((trail) => ({
+      name: trail.name,
+      path: trail.href,
+    })),
+  });
+  const inventoryTone = systemCount >= 20
+    ? "broad citywide set"
+    : systemCount >= 8
+      ? "solid cross-city set"
+      : "smaller curated set";
+  const hasSurfaceSignals = trailCards.some((trail) => Boolean(trail.surfaceSignal));
+  const signalMentions: string[] = [];
+  if (hasLeashSignals) signalMentions.push("leash rules");
+  if (avgShadePct != null) signalMentions.push("shade coverage");
+  if (hasWaterSignals) signalMentions.push("water access");
+  if (hasSurfaceSignals) signalMentions.push("surface type");
+  signalMentions.push("distance and terrain");
+  const signalSummary = signalMentions.slice(0, 4).join(", ");
+  const filterCoverageText = [
+    avgShadePct != null ? "shade" : null,
+    hasWaterSignals ? "water" : null,
+    "distance",
+    hasSurfaceSignals ? "surface" : null,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(", ");
+  const leashCoverageText = hasLeashSignals
+    ? "Many listings include leash-policy details, so you can compare requirements directly from the list."
+    : "Leash information appears where available, so treat missing policy details as unknown and confirm locally.";
+  const cityFaqItems = [
+    {
+      question: `Where can I find dog-friendly hikes in ${cityLabel}?`,
+      answer: `${cityLabel} trail options are grouped here in one place as a ${inventoryTone}, with direct links to each trail page. Start with the map or card list, then open individual trails to compare ${signalSummary} before deciding where to hike with your dog.`,
+    },
+    {
+      question: `Are there dog-friendly walking trails in ${cityLabel}?`,
+      answer: `Yes. This city directory currently includes ${systemCount} dog-friendly ${systemCount === 1 ? "trail" : "trails"} and walking paths. Use the filters to narrow by easy walks and distance bands${hasSurfaceSignals ? ", plus surface type" : ""}, then compare trail details to match your dog’s comfort and energy level.`,
+    },
+    {
+      question: `Are leash rules the same on every trail in ${cityLabel}?`,
+      answer: `No. Leash expectations can vary trail to trail in ${cityLabel}. ${leashCoverageText} Use leash-related filters and confirm final rules on each trail page before heading out.`,
+    },
+    {
+      question: `Can I filter trails in ${cityLabel} by shade, water, or distance?`,
+      answer: `Yes. You can filter this ${cityLabel} list by ${filterCoverageText}, plus swim suitability and leash style, then sort by recommendation, distance, or shade. The filters help you narrow options quickly before opening full trail pages for deeper planning.`,
+    },
+  ];
+  const cityFaqSchema = faqPageSchema({
+    path: cityPath,
+    items: cityFaqItems,
+  });
 
   return (
     <section>
@@ -343,6 +416,8 @@ export default async function CityPage({
               path: cityPath,
             },
           }),
+          ...(trailListSchema ? [trailListSchema] : []),
+          ...(cityFaqSchema ? [cityFaqSchema] : []),
         ]}
       />
       <nav aria-label="Breadcrumb" style={{ marginBottom: "0.5rem" }}>
@@ -416,6 +491,28 @@ export default async function CityPage({
         </p>
       </div>
 
+      <section
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: "14px",
+          background: "#fff",
+          padding: "0.9rem 1rem",
+          marginBottom: "1.25rem",
+        }}
+      >
+        <h2 style={{ fontSize: "1.05rem", margin: 0, color: "#111827" }}>
+          Dog-Friendly Hikes, Trails, and Walking Paths in {cityLabel}
+        </h2>
+        <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.35rem 0 0", lineHeight: 1.6 }}>
+          If you&apos;re comparing dog-friendly hikes in {cityLabel}, this page brings local trail options into one
+          place so you can evaluate them side by side. You can review {systemCount} dog-friendly{" "}
+          {systemCount === 1 ? "trail" : "trails"} and walking paths, then open each trail page for detailed
+          leash rules, shade coverage, water access, trail length, and terrain signals. Instead of scanning generic
+          listings, use these city-level comparisons to narrow down which routes best match your dog&apos;s comfort,
+          energy level, and preferred walking or hiking conditions.
+        </p>
+      </section>
+
       {dogTypeLinks.length > 0 && (
         <section
           style={{
@@ -486,6 +583,55 @@ export default async function CityPage({
         </section>
       )}
 
+      {dogNeedLinks.length > 0 && (
+        <section
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: "14px",
+            background: "#fff",
+            padding: "0.9rem 1rem",
+            marginBottom: "1.25rem",
+          }}
+        >
+          <h2 style={{ fontSize: "1.05rem", margin: 0, color: "#111827" }}>
+            Explore by Dog Need
+          </h2>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.3rem 0 0.6rem", lineHeight: 1.5 }}>
+            Open curated trail lists for common dog-hiking priorities in {cityLabel}.
+          </p>
+          <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexWrap: "wrap", gap: "0.45rem" }}>
+            {dogNeedLinks.map((entry) => {
+              const href = buildLongTailCityPath({
+                state: stateLabel,
+                city: cityLabel,
+                intent: entry.intent.slug,
+              });
+              return (
+                <li key={entry.intent.slug}>
+                  <Link
+                    href={href}
+                    style={{
+                      display: "inline-block",
+                      fontSize: "0.8rem",
+                      color: "#166534",
+                      textDecoration: "none",
+                      fontWeight: 600,
+                      border: "1px solid #bbf7d0",
+                      background: "#f0fdf4",
+                      borderRadius: "999px",
+                      padding: "0.25rem 0.6rem",
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {entry.intent.shortLabel}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* ── Map ─────────────────────────────────────────────────────────── */}
       {mapPins.length > 0 && (
         <div className="city-map-wrap" style={{ marginBottom: "1.75rem" }}>
@@ -496,7 +642,43 @@ export default async function CityPage({
       {!db && <p style={{ marginBottom: "1rem" }}>{instantDbMissingEnvMessage()}</p>}
 
       {/* ── Trail cards ─────────────────────────────────────────────────── */}
+      <section style={{ marginBottom: "0.75rem" }}>
+        <h2 style={{ fontSize: "1.05rem", margin: 0, color: "#111827" }}>
+          Dog-Friendly Hikes and Walking Trails in {cityLabel}
+        </h2>
+        <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.35rem 0 0", lineHeight: 1.5 }}>
+          This directory lists {systemCount} dog-friendly {systemCount === 1 ? "trail" : "trails"} and
+          walking paths in {cityLabel}. Compare leash rules, shade coverage, water access, terrain, and
+          trail distance before choosing the best hike for your dog.
+        </p>
+      </section>
       <CityTrailCardList trails={trailCards} />
+
+      <section
+        style={{
+          border: "1px solid #e5e7eb",
+          borderRadius: "14px",
+          background: "#fff",
+          padding: "0.95rem 1rem",
+          marginTop: "1.25rem",
+        }}
+      >
+        <h2 style={{ fontSize: "1.05rem", margin: 0, color: "#111827" }}>
+          FAQs About Dog-Friendly Trails in {cityLabel}
+        </h2>
+        <div style={{ marginTop: "0.65rem", display: "grid", gap: "0.65rem" }}>
+          {cityFaqItems.map((item) => (
+            <article key={item.question}>
+              <h3 style={{ fontSize: "0.9rem", margin: 0, color: "#111827" }}>
+                {item.question}
+              </h3>
+              <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.28rem 0 0", lineHeight: 1.55 }}>
+                {item.answer}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
     </section>
   );
 }

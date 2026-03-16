@@ -68,6 +68,46 @@ export function collectionPageSchema(input: {
   return page;
 }
 
+export function itemListSchema(input: {
+  name: string;
+  path: string;
+  items: Array<{
+    name: string;
+    path: string;
+  }>;
+}): Record<string, unknown> | null {
+  const items = input.items
+    .map((item) => ({
+      name: String(item.name ?? "").trim(),
+      path: normalizeSchemaPath(String(item.path ?? "")),
+    }))
+    .filter((item) => item.name.length > 0 && item.path.length > 0);
+
+  if (items.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: input.name,
+    url: absoluteUrl(normalizeSchemaPath(input.path)),
+    numberOfItems: items.length,
+    itemListElement: items.map((item, index) => {
+      const itemUrl = absoluteUrl(item.path);
+      return {
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.name,
+        url: itemUrl,
+        item: {
+          "@type": "WebPage",
+          name: item.name,
+          url: itemUrl,
+        },
+      };
+    }),
+  };
+}
+
 export function trailPlaceSchema(input: {
   name: string;
   description: string;

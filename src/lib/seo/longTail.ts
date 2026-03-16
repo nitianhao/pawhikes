@@ -17,6 +17,7 @@ export type LongTailTrailRecord = {
   elevationGainFt?: number;
   dogsAllowed?: string;
   heatRisk?: string;
+  surfaceSummary?: unknown;
 };
 
 export type LongTailIntentDefinition = {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { loadSearchIndex } from "@/lib/search/loader";
 import { search } from "@/lib/search/search";
@@ -10,6 +10,8 @@ import { SearchDropdown } from "./SearchDropdown";
 
 export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const isHomepage = pathname === "/";
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -84,6 +86,17 @@ export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
   }, []);
 
   const wrapStyle: React.CSSProperties = { position: "relative" };
+
+  if (isHomepage) {
+    return (
+      <div
+        aria-hidden="true"
+        className={mobile
+          ? "site-header-search site-header-search--mobile site-header-search--suppressed"
+          : "site-header-search site-header-search--suppressed"}
+      />
+    );
+  }
 
   return (
     <div

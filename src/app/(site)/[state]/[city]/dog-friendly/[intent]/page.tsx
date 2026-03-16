@@ -49,6 +49,20 @@ function formatDistance(miles: unknown): string {
   return `${miles.toFixed(1)} mi`;
 }
 
+function surfaceSignalFromSummary(surfaceSummary: unknown): string | null {
+  if (typeof surfaceSummary === "string" && surfaceSummary.trim().length > 0) {
+    return surfaceSummary.trim().toLowerCase();
+  }
+  if (!surfaceSummary || typeof surfaceSummary !== "object" || Array.isArray(surfaceSummary)) {
+    return null;
+  }
+  const summary = surfaceSummary as { dominant?: unknown };
+  if (typeof summary.dominant === "string" && summary.dominant.trim().length > 0) {
+    return summary.dominant.trim().toLowerCase();
+  }
+  return null;
+}
+
 function asTrailCard(
   trail: LongTailTrailRecord,
   stateCode: string,
@@ -86,6 +100,7 @@ function asTrailCard(
       typeof trail.elevationGainFt === "number" && Number.isFinite(trail.elevationGainFt)
         ? trail.elevationGainFt
         : null,
+    surfaceSignal: surfaceSignalFromSummary(trail.surfaceSummary),
   };
 }
 

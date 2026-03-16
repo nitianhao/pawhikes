@@ -1,4 +1,3 @@
-import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getAdminDbSafe, instantDbMissingEnvMessage } from "@/lib/instant/safeAdmin";
@@ -7,6 +6,7 @@ import { canonicalTrailSlug, normalizeState } from "@/lib/trailSlug";
 import { DogNeedShortcuts } from "@/components/home/DogNeedShortcuts";
 import { FeaturedTrails } from "@/components/home/FeaturedTrails";
 import { HomeSearchForm } from "@/components/home/HomeSearchForm";
+import { CityBrowseGroups } from "@/components/home/CityBrowseGroups.client";
 import type { TrailCardData } from "@/components/home/TrailCard";
 import { buildPageMetadata } from "@/lib/seo/metadata";
 import { JsonLd } from "@/components/seo/JsonLd";
@@ -37,7 +37,6 @@ type CoverageRow = {
   key: string;
   stateCode: string;
   stateLabel: string;
-  stateHref: string;
   cityLabel: string;
   citySlug: string;
   cityHref: string;
@@ -49,6 +48,12 @@ type StateSummary = {
   label: string;
   cityCount: number;
   trailCount: number;
+};
+
+type CoverageStateGroup = {
+  stateCode: string;
+  stateLabel: string;
+  cities: CoverageRow[];
 };
 
 const HOME_DESCRIPTION =
@@ -145,7 +150,6 @@ function buildCoverageRows(systems: TrailSystemRecord[]): CoverageRow[] {
       key,
       stateCode,
       stateLabel,
-      stateHref: `/${encodeURIComponent(stateCode)}`,
       cityLabel,
       citySlug,
       cityHref: `/${encodeURIComponent(stateCode)}/${encodeURIComponent(citySlug)}`,
@@ -155,6 +159,8 @@ function buildCoverageRows(systems: TrailSystemRecord[]): CoverageRow[] {
   return Array.from(map.values()).sort((a, b) => {
     const byState = a.stateLabel.localeCompare(b.stateLabel);
     if (byState !== 0) return byState;
+    const byTrailCount = b.trailCount - a.trailCount;
+    if (byTrailCount !== 0) return byTrailCount;
     return a.cityLabel.localeCompare(b.cityLabel);
   });
 }
@@ -178,6 +184,34 @@ function buildStateSummaries(rows: CoverageRow[]): StateSummary[] {
   return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
+function buildCoverageStateGroups(rows: CoverageRow[]): CoverageStateGroup[] {
+  const groupsByState = new Map<string, CoverageStateGroup>();
+  for (const row of rows) {
+    const existing = groupsByState.get(row.stateCode);
+    if (!existing) {
+      groupsByState.set(row.stateCode, {
+        stateCode: row.stateCode,
+        stateLabel: row.stateLabel,
+        cities: [row],
+      });
+      continue;
+    }
+    existing.cities.push(row);
+  }
+
+  return Array.from(groupsByState.values()).sort((a, b) => {
+    const aTrails = a.cities.reduce((sum, city) => sum + city.trailCount, 0);
+    const bTrails = b.cities.reduce((sum, city) => sum + city.trailCount, 0);
+    const byTrails = bTrails - aTrails;
+    if (byTrails !== 0) return byTrails;
+
+    const byCities = b.cities.length - a.cities.length;
+    if (byCities !== 0) return byCities;
+
+    return a.stateLabel.localeCompare(b.stateLabel);
+  });
+}
+
 function coverageStatus(rows: CoverageRow[], totalTrails: number): string {
   if (rows.length === 0) return "Coverage update in progress as new regions are onboarded.";
   if (rows.length === 1) {
@@ -193,7 +227,8 @@ function topCoverageSentence(rows: CoverageRow[]): string | null {
     .slice(0, 3)
     .map((row) => `${row.cityLabel}, ${row.stateCode}`)
     .join(" • ");
-  return sample ? `Current coverage includes ${sample}.` : null;
+  if (!sample) return null;
+  return rows.length > 3 ? `Live now: ${sample} • more coming.` : `Live now: ${sample}.`;
 }
 
 export default async function SiteHomePage() {
@@ -215,6 +250,31 @@ export default async function SiteHomePage() {
   const totalTrails = coverageRows.reduce((sum, row) => sum + row.trailCount, 0);
   const totalCities = coverageRows.length;
   const totalStates = stateSummaries.length;
+  const coverageGroups = buildCoverageStateGroups(coverageRows);
+  const searchExamples = Array.from(
+    new Set(
+      [...coverageRows]
+        .sort((a, b) => {
+          const byTrailCount = b.trailCount - a.trailCount;
+          if (byTrailCount !== 0) return byTrailCount;
+          return a.cityLabel.localeCompare(b.cityLabel);
+        })
+        .map((row) => row.cityLabel)
+    )
+  ).slice(0, 5);
+  const searchFallbackCities = [...coverageRows]
+    .sort((a, b) => {
+      const byTrailCount = b.trailCount - a.trailCount;
+      if (byTrailCount !== 0) return byTrailCount;
+      return a.cityLabel.localeCompare(b.cityLabel);
+    })
+    .slice(0, 5)
+    .map((row) => ({
+      key: row.key,
+      label: `${row.cityLabel}, ${row.stateCode}`,
+      href: row.cityHref,
+      trailCount: row.trailCount,
+    }));
 
   const featuredTrails: TrailCardData[] = normalizedTrails.slice(0, 6).map((trail) => ({
     id: trail.id,
@@ -233,6 +293,11 @@ export default async function SiteHomePage() {
   const hasDb = Boolean(db);
   const heroSupport = homeHeroSupport({ totalStates, totalCities, totalTrails });
   const coverageLine = topCoverageSentence(coverageRows);
+  const heroInstruction = "Search for a city or trail to start exploring dog-friendly hikes.";
+  const heroTrustLine =
+    totalTrails > 0
+      ? `${heroSupport} Coverage expands city by city.`
+      : "Coverage expands city by city, with new regions added regularly.";
 
   return (
     <section style={{ display: "grid", gap: "1.75rem" }}>
@@ -258,25 +323,31 @@ export default async function SiteHomePage() {
           style={{
             fontSize: "clamp(1.5rem, 4vw, 2rem)",
             lineHeight: 1.15,
-            marginBottom: "0.4rem",
+            marginBottom: "0.35rem",
             color: "#111827",
             fontWeight: 700,
             letterSpacing: "-0.02em",
           }}
         >
-          Dog-friendly hiking trails by city and state
+          Find dog-friendly hikes by city or trail
         </h1>
-        <p style={{ color: "#6b7280", fontSize: "0.9rem", marginBottom: "1.1rem", lineHeight: 1.5 }}>
-          {heroSupport}
-          {" "}
-          Browse by state, city, and trail to compare dog access, leash rules, shade, water, surfaces, and trailhead access before you go.
+        <p style={{ color: "#4b5563", fontSize: "0.95rem", marginBottom: "0.9rem", lineHeight: 1.45 }}>
+          {heroInstruction}
         </p>
 
         <Suspense>
-          <HomeSearchForm />
+          <HomeSearchForm
+            fallbackCities={searchFallbackCities}
+            browseCitiesHref="/#coverage"
+            exampleQueries={searchExamples}
+          />
         </Suspense>
 
-        <div style={{ marginTop: "0.875rem", display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "center" }}>
+        <p style={{ color: "#6b7280", fontSize: "0.82rem", marginTop: "0.75rem", lineHeight: 1.45 }}>
+          {heroTrustLine}
+        </p>
+
+        <div style={{ marginTop: "0.55rem", display: "flex", flexWrap: "wrap", gap: "0.4rem", alignItems: "center" }}>
           <MiniStat value={String(totalStates)} label={totalStates === 1 ? "state" : "states"} />
           <MiniStat value={String(totalCities)} label={totalCities === 1 ? "city" : "cities"} />
           <MiniStat value={String(totalTrails)} label={totalTrails === 1 ? "trail" : "trails"} />
@@ -290,12 +361,12 @@ export default async function SiteHomePage() {
       <FeaturedTrails trails={featuredTrails} />
 
       <section id="coverage" style={{ ...sectionCard, padding: "1.25rem" }}>
-        <div style={{ marginBottom: "0.875rem" }}>
+        <div style={{ marginBottom: "0.8rem" }}>
           <h2 style={{ fontSize: "1.2rem", marginBottom: "0.25rem", color: "#111827" }}>
-            Browse Dog-Friendly Trails by State and City
+            Browse Trails by City
           </h2>
           <p style={{ color: "#6b7280", fontSize: "0.875rem" }}>
-            Use these direct links to open city-level dog hiking trail directories.
+            Choose a city card to explore local trails. Coverage is expanding.
           </p>
           {coverageLine && (
             <p style={{ color: "#6b7280", fontSize: "0.8rem", marginTop: "0.3rem" }}>
@@ -315,40 +386,7 @@ export default async function SiteHomePage() {
             No trail systems found yet. Add `trailSystems` records to populate coverage.
           </p>
         ) : (
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "34rem" }}>
-              <thead>
-                <tr>
-                  <Th>State</Th>
-                  <Th>City</Th>
-                  <Th>Trail count</Th>
-                  <Th>Open</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {coverageRows.map((row) => (
-                  <tr key={row.key} className="home-coverage-row">
-                    <Td>
-                      <Link href={row.stateHref} style={{ color: "#166534", textDecoration: "none", fontWeight: 600 }}>
-                        {row.stateLabel} dog-friendly trails directory
-                      </Link>
-                    </Td>
-                    <Td>
-                      <Link href={row.cityHref} style={{ color: "#0f172a", textDecoration: "none", fontWeight: 600 }}>
-                        Dog hikes in {row.cityLabel}
-                      </Link>
-                    </Td>
-                    <Td>{row.trailCount}</Td>
-                    <Td>
-                      <Link href={row.cityHref} style={{ color: "#166534", textDecoration: "none", fontWeight: 500 }}>
-                        See {row.cityLabel} dog-friendly trails
-                      </Link>
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CityBrowseGroups groups={coverageGroups} />
         )}
       </section>
 
@@ -422,31 +460,6 @@ function ValueCard({ title, body }: { title: string; body: string }) {
       <h3 style={{ fontSize: "0.95rem", marginBottom: "0.3rem", color: "#111827" }}>{title}</h3>
       <p style={{ fontSize: "0.85rem", color: "#6b7280", lineHeight: 1.5 }}>{body}</p>
     </article>
-  );
-}
-
-function Th({ children }: { children: React.ReactNode }) {
-  return (
-    <th
-      style={{
-        textAlign: "left",
-        fontSize: "0.8rem",
-        color: "#64748b",
-        fontWeight: 600,
-        padding: "0.6rem 0.5rem",
-        borderBottom: "1px solid #e5e7eb",
-      }}
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({ children }: { children: React.ReactNode }) {
-  return (
-    <td style={{ padding: "0.65rem 0.5rem", fontSize: "0.9rem", color: "#0f172a" }}>
-      {children}
-    </td>
   );
 }
 

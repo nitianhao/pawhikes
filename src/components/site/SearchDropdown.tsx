@@ -3,15 +3,32 @@
 import Link from "next/link";
 import type { SearchResult } from "@/lib/search/types";
 
+type FallbackCity = {
+  key: string;
+  label: string;
+  href: string;
+  trailCount: number;
+};
+
 type Props = {
   results: SearchResult[];
   query: string;
   activeIndex: number;
   onResultClick: () => void;
+  fallbackCities?: FallbackCity[];
+  browseCitiesHref?: string;
 };
 
-export function SearchDropdown({ results, query, activeIndex, onResultClick }: Props) {
-  if (results.length === 0) return null;
+export function SearchDropdown({
+  results,
+  query,
+  activeIndex,
+  onResultClick,
+  fallbackCities = [],
+  browseCitiesHref = "/#coverage",
+}: Props) {
+  const hasFallback = query.trim().length > 0 && results.length === 0;
+  if (results.length === 0 && !hasFallback) return null;
 
   const container: React.CSSProperties = {
     position: "absolute",
@@ -51,24 +68,59 @@ export function SearchDropdown({ results, query, activeIndex, onResultClick }: P
 
   return (
     <div style={container} role="listbox" aria-label="Search results">
-      <div style={header}>Trails</div>
-      {results.map((result, i) => (
-        <ResultRow
-          key={result.slug}
-          result={result}
-          active={i === activeIndex}
-          onClick={onResultClick}
-        />
-      ))}
-      <div style={footer}>
-        <Link
-          href={`/search?q=${encodeURIComponent(query)}`}
-          style={footerLink}
-          onClick={onResultClick}
-        >
-          See all results &rarr;
-        </Link>
-      </div>
+      {results.length > 0 ? (
+        <>
+          <div style={header}>Trails</div>
+          {results.map((result, i) => (
+            <ResultRow
+              key={result.slug}
+              result={result}
+              active={i === activeIndex}
+              onClick={onResultClick}
+            />
+          ))}
+          <div style={footer}>
+            <Link
+              href={`/search?q=${encodeURIComponent(query)}`}
+              style={footerLink}
+              onClick={onResultClick}
+            >
+              See all results &rarr;
+            </Link>
+          </div>
+        </>
+      ) : (
+        <>
+          <div style={header}>No direct matches</div>
+          <p
+            style={{
+              padding: "0.55rem 0.85rem 0.45rem",
+              fontSize: "0.85rem",
+              color: "#4b5563",
+              borderBottom: "1px solid #f0fdf4",
+            }}
+          >
+            We don&apos;t have trails for this location yet.
+          </p>
+          <FallbackRow
+            href={browseCitiesHref}
+            active={activeIndex === 0}
+            onClick={onResultClick}
+            label="Browse covered cities instead"
+            meta="See all covered cities"
+          />
+          {fallbackCities.map((city, i) => (
+            <FallbackRow
+              key={city.key}
+              href={city.href}
+              active={activeIndex === i + 1}
+              onClick={onResultClick}
+              label={city.label}
+              meta={`${city.trailCount} trail${city.trailCount === 1 ? "" : "s"}`}
+            />
+          ))}
+        </>
+      )}
     </div>
   );
 }
@@ -129,6 +181,41 @@ function ResultRow({
       <span style={nameStyle}>{result.name}</span>
       <span style={metaStyle}>{meta}</span>
       {result.leash === "off" && <span style={chipStyle}>Off-leash</span>}
+    </Link>
+  );
+}
+
+function FallbackRow({
+  href,
+  active,
+  onClick,
+  label,
+  meta,
+}: {
+  href: string;
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  meta: string;
+}) {
+  return (
+    <Link
+      href={href}
+      role="option"
+      aria-selected={active}
+      onClick={onClick}
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: "0.65rem",
+        padding: "0.58rem 0.85rem",
+        textDecoration: "none",
+        background: active ? "#f0fdf4" : "transparent",
+      }}
+    >
+      <span style={{ fontSize: "0.88rem", fontWeight: 600, color: "#111827" }}>{label}</span>
+      <span style={{ fontSize: "0.76rem", color: "#6b7280", whiteSpace: "nowrap" }}>{meta}</span>
     </Link>
   );
 }
