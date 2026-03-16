@@ -450,6 +450,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if ((system.lengthMilesTotal as number ?? 0) < 1) {
+      console.log(`${"SKIP (<1mi)".padEnd(14)}${displayName}`);
+      skipped++;
+      continue;
+    }
+
     const rawBbox = computeBbox(systemLines);
     if (!rawBbox) {
       console.log(`${"SKIP (no bbox)".padEnd(14)}${displayName}`);

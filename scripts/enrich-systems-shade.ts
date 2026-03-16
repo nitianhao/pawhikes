@@ -610,6 +610,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if ((system.lengthMilesTotal as number ?? 0) < 1) {
+      console.log(`${"SKIP (<1mi)".padEnd(14)}${label}`);
+      skipped++;
+      continue;
+    }
+
     // Fetch shade features
     let elements: any[] = [];
     try {

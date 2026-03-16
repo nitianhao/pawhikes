@@ -404,17 +404,20 @@ async function main(): Promise<void> {
 
   // --- fetch all segments ---
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({
-    trailSegments: { $: { limit: 5000 } },
-  });
+  const segQuery = datasetFilter
+    ? { trailSegments: { $: { where: { extDataset: datasetFilter }, limit: 10000 } } }
+    : { trailSegments: { $: { limit: 5000 } } };
+  const segRes = await db.query(segQuery);
   let allSegments = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegments.length}`);
 
-  if (datasetFilter) {
+  if (datasetFilter && !segQuery.trailSegments.$?.where) {
     allSegments = allSegments.filter(
       (s: any) => s.extDataset === datasetFilter
     );
     console.log(`  After extDataset="${datasetFilter}": ${allSegments.length}`);
+  } else if (datasetFilter) {
+    console.log(`  Filtered by extDataset="${datasetFilter}" at query level`);
   }
 
   // Group segments by systemRef

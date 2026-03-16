@@ -571,10 +571,12 @@ async function main(): Promise<void> {
   let processedCount = 0;
   let skippedNoGeom = 0;
   let updatedCount = 0;
+  let sysIdx = 0;
 
   const updates: { systemId: string; payload: Record<string, any> }[] = [];
 
   for (const system of systems) {
+    sysIdx++;
     const ref: string = system.extSystemRef ?? system.id;
     const label = (system.slug ?? system.name ?? ref).slice(0, 43);
 
@@ -597,6 +599,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if ((system.lengthMilesTotal as number ?? 0) < 1) {
+      console.log(`${"SKIP (<1mi)".padEnd(14)}${label}`);
+      skippedNoGeom++;
+      continue;
+    }
+
     // Build a composite geometry object for bbox computation
     const compositeGeom: GeoJsonGeometry = {
       type: "MultiLineString",
@@ -610,9 +618,7 @@ async function main(): Promise<void> {
     }
 
     // Query Overpass
-    if (isVerbose) {
-      console.log(`  Querying Overpass for ${label}...`);
-    }
+    console.log(`[${sysIdx}/${systems.length}] ${label}`);
     let osmWays: OsmWay[] = [];
     try {
       osmWays = await queryOverpass(bbox);

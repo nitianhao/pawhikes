@@ -544,6 +544,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if ((system.lengthMilesTotal as number ?? 0) < 1) {
+      console.log(`${"SKIP (<1mi)".padEnd(14)}${displayName}`);
+      skipped++;
+      continue;
+    }
+
     const uniq = uniqueAnchors(anchors);
     const centroidCoord = anchors.centroid;
 

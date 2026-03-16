@@ -535,6 +535,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if ((system.lengthMilesTotal as number ?? 0) < 1) {
+      console.log(`${"SKIP (<1mi)".padEnd(14)}${label}`);
+      skippedNoGeom++;
+      continue;
+    }
+
     const bbox = bboxOfLines(systemLines, 0.001);
     if (!bbox) {
       console.log(`${"SKIP (no bbox)".padEnd(14)}${label}`);

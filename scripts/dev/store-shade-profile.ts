@@ -503,11 +503,13 @@ async function main(): Promise<void> {
 
   // ── per-system loop ──
   console.log(`\n${"─".repeat(80)}`);
-  let processed = 0, skipped = 0;
+  let processed = 0, skipped = 0, sysIdx = 0;
   const updates: { systemId: string; payload: Record<string, any> }[] = [];
 
   for (const system of systems) {
+    sysIdx++;
     const label = (system.slug ?? system.name ?? system.id).slice(0, 50);
+    console.log(`[${sysIdx}/${systems.length}] ${label}`);
     const lengthMilesTotal = system.lengthMilesTotal as number ?? 0;
 
     // Reconstruct geometry
@@ -520,6 +522,12 @@ async function main(): Promise<void> {
 
     if (systemLines.length === 0) {
       console.log(`SKIP (no geom)  ${label}`);
+      skipped++;
+      continue;
+    }
+
+    if (lengthMilesTotal < 1) {
+      console.log(`SKIP (<1mi)     ${label}`);
       skipped++;
       continue;
     }

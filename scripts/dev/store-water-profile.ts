@@ -280,6 +280,7 @@ async function fetchOverpass(query: string, attempt = 0): Promise<any> {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: `data=${encodeURIComponent(query)}`,
+    signal: AbortSignal.timeout(90_000),
   });
   if (res.status === 429 || res.status >= 500) {
     if (attempt < 3) {
@@ -445,6 +446,7 @@ async function main(): Promise<void> {
   for (let si = 0; si < systems.length; si++) {
     const system = systems[si];
     const label = (system.slug ?? system.name ?? system.id).slice(0, 55);
+    console.log(`[${si + 1}/${systems.length}] ${label}`);
     const lengthMilesTotal = (system.lengthMilesTotal as number) ?? 0;
 
     // ── parse segment geometry ──
@@ -458,6 +460,12 @@ async function main(): Promise<void> {
 
     if (parsedSegs.length === 0) {
       console.log(`SKIP (no geom)  ${label}`);
+      skipped++;
+      continue;
+    }
+
+    if (lengthMilesTotal < 1) {
+      console.log(`SKIP (<1mi)     ${label}`);
       skipped++;
       continue;
     }

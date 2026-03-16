@@ -597,6 +597,12 @@ async function main(): Promise<void> {
       continue;
     }
 
+    if ((system.lengthMilesTotal as number ?? 0) < 1) {
+      console.log(`${"SKIP (<1mi)".padEnd(14)}${label}`);
+      skipped++;
+      continue;
+    }
+
     // Deduplicate anchors: if start ≈ end (loop trail) or centroid ≈ start,
     // skip duplicates to avoid redundant Overpass calls.
     const uniqueAnchors: { label: AnchorLabel; coord: Coord }[] = [];

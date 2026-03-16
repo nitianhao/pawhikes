@@ -74,6 +74,7 @@ function loadEnvLocal(): void {
 interface CliArgs {
   limit?: number;
   slug?: string;
+  city?: string;
   concurrency: number;
 }
 
@@ -81,6 +82,7 @@ function parseArgs(): CliArgs {
   const argv = process.argv.slice(2);
   let limit: number | undefined;
   let slug: string | undefined;
+  let city: string | undefined;
   let concurrency = 3;
 
   for (let i = 0; i < argv.length; i++) {
@@ -88,11 +90,13 @@ function parseArgs(): CliArgs {
       limit = parseInt(argv[++i], 10);
     } else if (argv[i] === "--slug" && argv[i + 1]) {
       slug = argv[++i];
+    } else if (argv[i] === "--city" && argv[i + 1]) {
+      city = argv[++i];
     } else if (argv[i] === "--concurrency" && argv[i + 1]) {
       concurrency = Math.max(1, Math.min(10, parseInt(argv[++i], 10)));
     }
   }
-  return { limit, slug, concurrency };
+  return { limit, slug, city, concurrency };
 }
 
 // ─── InstantDB helpers ────────────────────────────────────────────────────────
@@ -131,7 +135,7 @@ async function withConcurrency<T>(
 
 async function main(): Promise<void> {
   loadEnvLocal();
-  const { limit, slug: slugFilter, concurrency } = parseArgs();
+  const { limit, slug: slugFilter, city: cityFilter, concurrency } = parseArgs();
 
   // ── Validate env ──────────────────────────────────────────────────────────
   const appId = process.env.INSTANT_APP_ID;
@@ -157,6 +161,7 @@ async function main(): Promise<void> {
   console.log(`    Concurrency: ${concurrency}`);
   console.log(`    Output:      ${getOutDir()}`);
   if (slugFilter) console.log(`    Filter:      slug=${slugFilter}`);
+  if (cityFilter) console.log(`    Filter:      city=${cityFilter}`);
   if (limit) console.log(`    Limit:       ${limit}`);
   console.log();
 
@@ -181,7 +186,12 @@ async function main(): Promise<void> {
     systems = systems.filter(
       (s) => typeof s.lengthMilesTotal === "number" && s.lengthMilesTotal > 1
     );
-    console.log(` done (${systems.length} of ${before} have lengthMilesTotal > 1 mi)`);
+    if (cityFilter) {
+      systems = systems.filter(
+        (s) => (s.city as string | undefined)?.toLowerCase() === cityFilter.toLowerCase()
+      );
+    }
+    console.log(` done (${systems.length} of ${before} have lengthMilesTotal > 1 mi${cityFilter ? ` in ${cityFilter}` : ""})`);
   } else {
     console.log(` done (${systems.length} found)`);
   }
