@@ -112,6 +112,7 @@ export function HeaderSearch({ mobile = false }: { mobile?: boolean }) {
           value={query}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
+          role="combobox"
           aria-label="Search trails"
           aria-expanded={open}
           aria-haspopup="listbox"

@@ -1,6 +1,7 @@
 // Data source: InstantDB `trailSystems` entity.
 // Map uses centroid [lon,lat] (already stored from rollup) — no segment geometry needed.
 
+import { Suspense } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -652,7 +653,9 @@ export default async function CityPage({
           trail distance before choosing the best hike for your dog.
         </p>
       </section>
-      <CityTrailCardList trails={trailCards} />
+      <Suspense fallback={null}>
+        <CityTrailCardList trails={trailCards} />
+      </Suspense>
 
       <section
         style={{

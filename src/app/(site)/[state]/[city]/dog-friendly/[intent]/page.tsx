@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -329,7 +330,9 @@ export default async function CityLongTailPage({
         )}
       </div>
 
-      <CityTrailCardList trails={trailCards} />
+      <Suspense fallback={null}>
+        <CityTrailCardList trails={trailCards} />
+      </Suspense>
     </section>
   );
 }

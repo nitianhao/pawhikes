@@ -141,6 +141,7 @@ export function HomeSearchForm({
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             placeholder="Search by trail, city, or dog need (shade, easy walk...)"
+            role="combobox"
             aria-label="Search trails"
             aria-expanded={open}
             aria-haspopup="listbox"

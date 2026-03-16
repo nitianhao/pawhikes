@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, permanentRedirect } from "next/navigation";
@@ -65,6 +66,15 @@ function asTrailCard(
       typeof trail.elevationGainFt === "number" && Number.isFinite(trail.elevationGainFt)
         ? trail.elevationGainFt
         : null,
+    surfaceSignal: (() => {
+      const s = trail.surfaceSummary;
+      if (typeof s === "string" && s.trim()) return s.trim().toLowerCase();
+      if (s && typeof s === "object" && !Array.isArray(s)) {
+        const dominant = (s as { dominant?: unknown }).dominant;
+        if (typeof dominant === "string" && dominant.trim()) return dominant.trim().toLowerCase();
+      }
+      return null;
+    })(),
   };
 }
 
@@ -263,7 +273,9 @@ export async function DogTypeLandingPage(input: {
         </p>
       </div>
 
-      <CityTrailCardList trails={trailCards} />
+      <Suspense fallback={null}>
+        <CityTrailCardList trails={trailCards} />
+      </Suspense>
     </section>
   );
 }
