@@ -875,7 +875,7 @@ async function main() {
 
   let segments;
   const res = await db.query({
-    trailSegments: { $: { limit: 10000 } },
+    trailSegments: { $: { limit: 50000 } },
   });
   const allSegs = entityList(res, "trailSegments");
   segments = allSegs.filter(

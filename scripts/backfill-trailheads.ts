@@ -546,7 +546,7 @@ async function main(): Promise<void> {
 
   // ── fetch trailSegments for geometry ──
   console.log("\nFetching trailSegments...");
-  const segRes  = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes  = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 

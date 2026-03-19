@@ -23,6 +23,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox as osmFilterByBbox, type OsmLocalIndex } from "../lib/osmLocal.js";
 
 // ── env ──────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -490,7 +491,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry reconstruction ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 
@@ -499,6 +500,18 @@ async function main(): Promise<void> {
     if (!seg.systemRef) continue;
     if (!segsByRef.has(seg.systemRef)) segsByRef.set(seg.systemRef, []);
     segsByRef.get(seg.systemRef)!.push(seg);
+  }
+
+  // ── load local OSM index if available ──
+  const osmCityKey = cityFilter ?? slugFilter ?? "";
+  let localOsmIndex: OsmLocalIndex | null = null;
+  if (osmCityKey) {
+    localOsmIndex = loadOsmCategory(osmCityKey, "shade");
+    if (localOsmIndex) {
+      console.log(`  Using local OSM cache for shade (${localOsmIndex.elements.length} features)\n`);
+    } else {
+      console.log(`  No local OSM cache found for "${osmCityKey}" — will use Overpass\n`);
+    }
   }
 
   // ── per-system loop ──
@@ -539,16 +552,20 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Fetch shade features from Overpass
+    // Fetch shade features (local OSM cache preferred; Overpass fallback)
     let elements: any[] = [];
-    try {
-      elements = await overpassPost(shadeQuery(bbox));
-    } catch (err: any) {
-      console.warn(`  ERROR (Overpass) for ${label}: ${err.message}`);
-      skipped++;
-      continue;
+    if (localOsmIndex) {
+      elements = osmFilterByBbox(localOsmIndex, bbox);
+    } else {
+      try {
+        elements = await overpassPost(shadeQuery(bbox));
+      } catch (err: any) {
+        console.warn(`  ERROR (Overpass) for ${label}: ${err.message}`);
+        skipped++;
+        continue;
+      }
+      await sleep(1_500);
     }
-    await sleep(1_500);
 
     // Build shade feature index
     const idx = buildShadeIndex(elements, systemLines, nearMeters);

@@ -139,7 +139,7 @@ async function main(): Promise<void> {
   console.log("Enrich trailhead photos (Google Places API)\n");
   console.log("Config: limit=%s, write=%s\n", limitArg ?? "all", write);
 
-  const thRes = await db.query({ trailHeads: { $: { limit: 10000 } } });
+  const thRes = await db.query({ trailHeads: { $: { limit: 50000 } } });
   const heads = entityList(thRes, "trailHeads") as Array<{
     id: string;
     googlePlaceId?: string;

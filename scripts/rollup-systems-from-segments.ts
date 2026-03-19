@@ -405,7 +405,7 @@ async function main(): Promise<void> {
   // --- fetch all segments ---
   console.log("\nFetching trailSegments...");
   const segQuery = datasetFilter
-    ? { trailSegments: { $: { where: { extDataset: datasetFilter }, limit: 10000 } } }
+    ? { trailSegments: { $: { where: { extDataset: datasetFilter }, limit: 50000 } } }
     : { trailSegments: { $: { limit: 5000 } } };
   const segRes = await db.query(segQuery);
   let allSegments = entityList(segRes, "trailSegments");
