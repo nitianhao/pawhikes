@@ -22,6 +22,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox as osmFilterByBbox, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env ───────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -67,6 +68,7 @@ const nearMeters   = typeof args.nearMeters === "string" ? parseFloat(args.nearM
 const isDryRun     = !args.write;
 const isVerbose    = !!args.verbose;
 const minLength    = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
+const skipExisting = !!args["skip-existing"];
 
 if (!cityFilter) { console.error("Error: --city is required"); process.exit(1); }
 
@@ -397,6 +399,10 @@ async function main(): Promise<void> {
     systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) > minLength);
     console.log(`  After min-length=${minLength}: ${systems.length}`);
   }
+  if (skipExisting) {
+    systems = systems.filter((s: any) => !s.highlightsLastComputedAt);
+    console.log(`  After skip-existing: ${systems.length}`);
+  }
   if (limitArg && !Number.isNaN(limitArg) && limitArg > 0) {
     systems = systems.slice(0, limitArg);
     console.log(`  After --limit ${limitArg}: ${systems.length}`);
@@ -405,7 +411,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry reconstruction ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 
@@ -414,6 +420,17 @@ async function main(): Promise<void> {
     if (!seg.systemRef) continue;
     if (!segsByRef.has(seg.systemRef)) segsByRef.set(seg.systemRef, []);
     segsByRef.get(seg.systemRef)!.push(seg);
+  }
+
+  // ── load local OSM index if available ──
+  let localOsmIndex: OsmLocalIndex | null = null;
+  if (cityFilter) {
+    localOsmIndex = loadOsmCategory(cityFilter, "highlights");
+    if (localOsmIndex) {
+      console.log(`  Using local OSM cache for highlights (${localOsmIndex.elements.length} features)\n`);
+    } else {
+      console.log(`  No local OSM cache found for "${cityFilter}" — will use Overpass\n`);
+    }
   }
 
   // ── per-system loop ──
@@ -433,8 +450,17 @@ async function main(): Promise<void> {
   const updates: { systemId: string; payload: Record<string, any> }[] = [];
   const allResults: { name: string; count: number }[] = [];
 
+  const _t0 = Date.now();
+  let _idx = 0;
+  const _hb = setInterval(() => {
+    const m = Math.round((Date.now() - _t0) / 60000);
+    console.log(`\n[${new Date().toTimeString().slice(0, 5)}] ${processed}/${systems.length} done (${m}m elapsed)\n`);
+  }, 5 * 60 * 1000);
+
   for (const system of systems) {
     const displayName = (system.slug ?? system.name ?? system.id).slice(0, 45);
+    _idx++;
+    console.log(`[${new Date().toTimeString().slice(0, 5)}] [${_idx}/${systems.length}] ${displayName}`);
 
     // Reconstruct geometry from segments
     const segs = segsByRef.get(system.extSystemRef) ?? [];
@@ -466,14 +492,18 @@ async function main(): Promise<void> {
     // Expand bbox by nearMeters so candidates just outside the raw bbox are included
     const [minLon, minLat, maxLon, maxLat] = expandBbox(rawBbox, nearMeters);
 
-    // ── query Overpass ──
+    // ── fetch highlight candidates (local OSM cache preferred; Overpass fallback) ──
     let rawElements: any[] = [];
-    try {
-      rawElements = await overpassPost(highlightsQuery(minLon, minLat, maxLon, maxLat));
-    } catch (err: any) {
-      console.warn(`  WARN (Overpass) for ${displayName}: ${err.message}`);
+    if (localOsmIndex) {
+      rawElements = osmFilterByBbox(localOsmIndex, [minLon, minLat, maxLon, maxLat]);
+    } else {
+      try {
+        rawElements = await overpassPost(highlightsQuery(minLon, minLat, maxLon, maxLat));
+      } catch (err: any) {
+        console.warn(`  WARN (Overpass) for ${displayName}: ${err.message}`);
+      }
+      await sleep(700);
     }
-    await sleep(700);
 
     const candidates = parseElements(rawElements);
 
@@ -535,17 +565,20 @@ async function main(): Promise<void> {
       if (capped.length > 5) console.log(`    ... and ${capped.length - 5} more`);
     }
 
-    updates.push({
-      systemId: system.id,
-      payload: {
-        highlightsCount:          capped.length,
-        highlightsByType:         byType,
-        highlights:               capped,
-        highlightsLastComputedAt: Date.now(),
-      },
-    });
+    const highlightsPayload = {
+      highlightsCount:          capped.length,
+      highlightsByType:         byType,
+      highlights:               capped,
+      highlightsLastComputedAt: Date.now(),
+    };
+    updates.push({ systemId: system.id, payload: highlightsPayload });
+    if (!isDryRun) {
+      await db.transact([(db as any).tx.trailSystems[system.id].update(highlightsPayload)]);
+      console.log(`[${new Date().toTimeString().slice(0, 5)}] ${processed}/${systems.length} done: ${displayName}`);
+    }
   }
 
+  clearInterval(_hb);
   console.log("─".repeat(COL));
 
   // ── summary ──
@@ -572,22 +605,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (updates.length === 0) { console.log("\nNothing to write."); return; }
-
-  console.log(`\nWriting ${updates.length} system update(s)...`);
-  const BATCH = 25;
-  let written = 0;
-  for (let i = 0; i < updates.length; i += BATCH) {
-    const chunk = updates.slice(i, i + BATCH);
-    const txSteps = chunk.map(({ systemId, payload }) =>
-      (db as any).tx.trailSystems[systemId].update(payload),
-    );
-    await db.transact(txSteps);
-    written += chunk.length;
-    console.log(`  Written ${written}/${updates.length}...`);
-  }
-
-  console.log(`\nDone. ${written} system(s) enriched with highlights.`);
+  console.log(`\nDone. ${updates.length} system(s) enriched with highlights (written incrementally).`);
   console.log("======================================");
 }
 

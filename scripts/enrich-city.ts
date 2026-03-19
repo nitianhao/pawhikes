@@ -17,6 +17,7 @@ import { enrichSystemElevation, type ElevationSummary } from "../src/lib/enrich/
 import { enrichSystemHazards, type HazardsSummary } from "./enrich/modules/hazards";
 import { enrichSystemRouteStructure, type RouteStructureSummary } from "./enrich/modules/route-structure";
 import { enrichSystemAccessRules, type AccessRulesSystemSummary } from "./enrich/modules/access-rules";
+import { loadOsmCategory, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 const ROOT = process.cwd();
 
@@ -225,6 +226,17 @@ function buildDiffLines<T extends Record<string, any>>(
   return lines;
 }
 
+const PER_MODULE_TIMEOUT_MS = 4 * 60 * 1000; // 4 min max per module per system
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`[${label}] timed out after ${ms / 1000}s`)), ms)
+    ),
+  ]);
+}
+
 function firstHazardPoints(points: any[] | undefined, n = 3): string {
   if (!Array.isArray(points) || points.length === 0) return "none";
   return points
@@ -247,6 +259,7 @@ async function main(): Promise<void> {
   const modules = parseModules(args.modules);
   const limitArg = typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
   const minLength = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
+  const skipExisting = !!args["skip-existing"];
 
   const dryRunExplicit = args["dry-run"] ?? args.dry;
   const dryRun = parseBool(dryRunExplicit, true);
@@ -291,9 +304,9 @@ async function main(): Promise<void> {
   console.log("modules:     ", modules.join(", "));
   console.log("mode:        ", dryRun ? "DRY RUN (no writes)" : "WRITE");
   if (runElevation) console.log("elevationProvider:", process.env.ELEVATION_PROVIDER ?? "opentopodata");
-  if (runHazards) console.log("hazardsProvider:  overpass");
+  if (runHazards) console.log("hazardsProvider:  local-osm (fallback: overpass)");
   if (runRouteStructure) console.log("routeStructureProvider: segment-geometry");
-  if (runAccessRules) console.log("accessRulesProvider: heads+osm");
+  if (runAccessRules) console.log("accessRulesProvider: heads+local-osm (fallback: overpass)");
   console.log("==============\n");
 
   console.log("Fetching trailSystems...");
@@ -314,6 +327,22 @@ async function main(): Promise<void> {
   if (minLength != null && minLength > 0) {
     systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) >= minLength);
     console.log(`  After min-length=${minLength}: ${systems.length}`);
+  }
+
+  if (skipExisting) {
+    const timestamps = {
+      elevation: "elevationComputedAt",
+      hazards: "hazardsLastComputedAt",
+      route_structure: "structureLastComputedAt",
+      access_rules: "accessRulesLastComputedAt",
+    } as const;
+    systems = systems.filter((s) =>
+      modules.some((m) => {
+        const field = timestamps[m as keyof typeof timestamps];
+        return field ? s[field] == null : true;
+      })
+    );
+    console.log(`  After skip-existing: ${systems.length}`);
   }
 
   if (slugFilter) {
@@ -344,22 +373,47 @@ async function main(): Promise<void> {
     console.log(`  Loaded trailHeads: ${trailHeads.length}`);
   }
 
+  let hazardsLocalIndex: OsmLocalIndex | null = null;
+  if ((runHazards || runAccessRules) && cityFilter) {
+    console.log("\nLoading local OSM hazards index...");
+    hazardsLocalIndex = loadOsmCategory(cityFilter, "hazards");
+    if (hazardsLocalIndex) {
+      console.log(`  Local hazards index: ${hazardsLocalIndex.elements.length} elements`);
+    } else {
+      console.log("  No local hazards cache found; will fall back to Overpass API");
+    }
+  }
+
   const updates: { id: string; payload: Record<string, any> }[] = [];
   const headUpdates: { id: string; payload: Record<string, any> }[] = [];
   let skipped = 0;
+  let written = 0;
+
+  const _t0 = Date.now();
+  let _idx = 0;
+  const _hb = setInterval(() => {
+    const m = Math.round((Date.now() - _t0) / 60000);
+    console.log(`\n[${new Date().toTimeString().slice(0, 5)}] ${written}/${systems.length} done (${m}m elapsed)\n`);
+  }, 5 * 60 * 1000);
 
   for (const system of systems) {
+    _idx++;
     const label = slugLabel(system);
+    console.log(`[${new Date().toTimeString().slice(0, 5)}] [${_idx}/${systems.length}] ${label}`);
     const payload: Record<string, any> = {};
     let moduleSucceeded = false;
 
     if (runElevation) {
       try {
-        const result = await enrichSystemElevation(system, {
-          segments,
-          rootDir: ROOT,
-          logger: (line) => console.log(`[${label}] ${line}`),
-        });
+        const result = await withTimeout(
+          enrichSystemElevation(system, {
+            segments,
+            rootDir: ROOT,
+            logger: (line) => console.log(`[${label}] ${line}`),
+          }),
+          PER_MODULE_TIMEOUT_MS,
+          label
+        );
 
         if (result.ok === false) {
           console.log(`[elevation][SKIP] ${label} reason=${result.reason}`);
@@ -388,11 +442,16 @@ async function main(): Promise<void> {
 
     if (runHazards) {
       try {
-        const result = await enrichSystemHazards(system, {
-          segments,
-          rootDir: ROOT,
-          logger: (line) => console.log(`[${label}] ${line}`),
-        });
+        const result = await withTimeout(
+          enrichSystemHazards(system, {
+            segments,
+            rootDir: ROOT,
+            localIndex: hazardsLocalIndex,
+            logger: (line) => console.log(`[${label}] ${line}`),
+          }),
+          PER_MODULE_TIMEOUT_MS,
+          label
+        );
 
         if (result.ok === false) {
           console.log(`[hazards][SKIP] ${label} reason=${result.reason}`);
@@ -425,11 +484,15 @@ async function main(): Promise<void> {
 
     if (runRouteStructure) {
       try {
-        const result = await enrichSystemRouteStructure(system, {
-          segments,
-          rootDir: ROOT,
-          logger: (line) => console.log(`[${label}] ${line}`),
-        });
+        const result = await withTimeout(
+          enrichSystemRouteStructure(system, {
+            segments,
+            rootDir: ROOT,
+            logger: (line) => console.log(`[${label}] ${line}`),
+          }),
+          PER_MODULE_TIMEOUT_MS,
+          label
+        );
 
         if (result.ok === false) {
           console.log(`[route_structure][SKIP] ${label} reason=${result.reason}`);
@@ -462,12 +525,17 @@ async function main(): Promise<void> {
 
     if (runAccessRules) {
       try {
-        const result = await enrichSystemAccessRules(system, {
-          segments,
-          trailHeads,
-          rootDir: ROOT,
-          logger: (line) => console.log(`[${label}] ${line}`),
-        });
+        const result = await withTimeout(
+          enrichSystemAccessRules(system, {
+            segments,
+            trailHeads,
+            rootDir: ROOT,
+            localIndex: hazardsLocalIndex,
+            logger: (line) => console.log(`[${label}] ${line}`),
+          }),
+          PER_MODULE_TIMEOUT_MS,
+          label
+        );
 
         if (result.ok === false) {
           console.log(`[access_rules][SKIP] ${label} reason=${result.reason}`);
@@ -517,15 +585,14 @@ async function main(): Promise<void> {
 
     if (!dryRun && Object.keys(payload).length > 0) {
       updates.push({ id: system.id, payload });
+      await db.transact([(db as any).tx.trailSystems[system.id].update(payload)]);
+      written++;
+      console.log(`[${new Date().toTimeString().slice(0, 5)}] ${written}/${systems.length} done: ${label}`);
     }
   }
 
-  if (!dryRun && updates.length > 0) {
-    console.log(`\nWriting ${updates.length} update(s)...`);
-    for (const update of updates) {
-      await db.transact([(db as any).tx.trailSystems[update.id].update(update.payload)]);
-    }
-  }
+  clearInterval(_hb);
+
   if (!dryRun && headUpdates.length > 0) {
     console.log(`Writing ${headUpdates.length} trailHead update(s)...`);
     for (const update of headUpdates) {

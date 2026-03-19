@@ -33,6 +33,8 @@
     "houston:ingest": "node scripts/ingest-houston-data.mjs",
     "dallas:ingest": "node scripts/ingest-dallas-data.mjs",
     "fortworth:ingest": "node scripts/ingest-fort-worth-data.mjs",
+    "okc:ingest": "node scripts/ingest-okc-data.mjs",
+    "phoenix:ingest": "node scripts/ingest-phoenix-data.mjs",
     "rollup:systems": "tsx scripts/rollup-systems-from-segments.ts",
     "link:segments": "node scripts/link-segments-to-systems.mjs",
     "trailheads:backfill:primary": "node scripts/backfill-primary-trailheads.mjs",
@@ -42,6 +44,8 @@
     "policy:seed:austin": "tsx scripts/policy/seed-policy-austin.ts --city Austin --state TX --dryRun",
     "policy:seed:dallas": "tsx scripts/policy/seed-policy-dallas.ts --city Dallas --state TX",
     "policy:seed:fortworth": "tsx scripts/policy/seed-policy-fort-worth.ts --city \"Fort Worth\" --state TX",
+    "policy:seed:okc": "tsx scripts/policy/seed-policy-okc.ts --city \"Oklahoma City\" --state OK",
+    "policy:seed:phoenix": "tsx scripts/policy/seed-policy-phoenix.ts --city \"Phoenix\" --state AZ",
     "enrich:google": "tsx scripts/enrich-google-places.ts",
     "audit:elevation": "tsx scripts/dev/audit-elevation.ts",
     "enrich:dogwater:osm": "node scripts/enrich-dog-water-osm.mjs",
@@ -50,7 +54,8 @@
     "store:faqs": "tsx scripts/dev/store-faqs.ts",
     "gen:content": "tsx scripts/generateTrailContent.ts",
     "store:content": "tsx scripts/dev/store-content.ts",
-    "build:search": "tsx scripts/build-search-index.ts"
+    "build:search": "tsx scripts/build-search-index.ts",
+    "osm:prepare": "tsx scripts/osm/prepare-city-osm.ts"
   },
   "dependencies": {
     "@instantdb/admin": "^0.18.9",

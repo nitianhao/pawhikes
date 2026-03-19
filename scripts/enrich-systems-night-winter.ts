@@ -24,6 +24,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env ───────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -243,6 +244,24 @@ function bboxForOverpass(lines: MultiLineCoords, paddingM: number): string | nul
   const dLon = dLat / Math.cos((midLat * Math.PI) / 180);
   return `${(minLat - dLat).toFixed(6)},${(minLon - dLon).toFixed(6)},` +
          `${(maxLat + dLat).toFixed(6)},${(maxLon + dLon).toFixed(6)}`;
+}
+
+/** Compute bbox [minLon, minLat, maxLon, maxLat] from MultiLine with padding in metres. */
+function bboxArray(lines: MultiLineCoords, paddingM: number): [number, number, number, number] | null {
+  let minLon = Infinity, minLat = Infinity, maxLon = -Infinity, maxLat = -Infinity;
+  for (const line of lines) {
+    for (const [lon, lat] of line) {
+      if (lon < minLon) minLon = lon;
+      if (lon > maxLon) maxLon = lon;
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+    }
+  }
+  if (!isFinite(minLon)) return null;
+  const dLat = (paddingM / 6_371_000) * (180 / Math.PI);
+  const midLat = (minLat + maxLat) / 2;
+  const dLon = dLat / Math.cos((midLat * Math.PI) / 180);
+  return [minLon - dLon, minLat - dLat, maxLon + dLon, maxLat + dLat];
 }
 
 // ── Overpass ──────────────────────────────────────────────────────────────────
@@ -512,7 +531,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry reconstruction ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 
@@ -521,6 +540,20 @@ async function main(): Promise<void> {
     if (!seg.systemRef) continue;
     if (!segsByRef.has(seg.systemRef)) segsByRef.set(seg.systemRef, []);
     segsByRef.get(seg.systemRef)!.push(seg);
+  }
+
+  // ── load local OSM indexes ──
+  const surfaceIndex: OsmLocalIndex | null = loadOsmCategory(cityFilter!, "surface");
+  if (surfaceIndex) {
+    console.log(`  Local OSM surface index loaded (${surfaceIndex.elements.length} elements)`);
+  } else {
+    console.log("  No local OSM surface cache — will use Overpass API for walkable ways");
+  }
+  const hazardsIndex: OsmLocalIndex | null = loadOsmCategory(cityFilter!, "hazards");
+  if (hazardsIndex) {
+    console.log(`  Local OSM hazards index loaded (${hazardsIndex.elements.length} elements)`);
+  } else {
+    console.log("  No local OSM hazards cache — will use Overpass API for street lamps");
   }
 
   // ── per-system loop ──
@@ -578,16 +611,46 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // ── Overpass queries ──
+    // ── Query OSM data — prefer local indexes, fall back to Overpass ──
     let wayElements: any[] = [];
     let lampElements: any[] = [];
-    try {
-      wayElements = await overpassPost(walkableWaysQuery(bbox));
-      await sleep(600);
-      lampElements = await overpassPost(streetLampsQuery(bbox));
-      await sleep(600);
-    } catch (err: any) {
-      console.warn(`  WARN (Overpass) for ${displayName}: ${err.message}`);
+    const localBbox = bboxArray(systemLines, nearMeters + 50);
+
+    if (surfaceIndex && localBbox) {
+      const localWays = filterByBbox(surfaceIndex, localBbox);
+      wayElements = localWays.map((el) => ({
+        type: el.type,
+        id: Number(el.id.replace(/\D/g, "")),
+        tags: el.tags,
+        geometry: (el.geometry || []).map((p) => ({ lat: p.lat, lon: p.lon })),
+      }));
+    } else {
+      try {
+        wayElements = await overpassPost(walkableWaysQuery(bbox));
+        await sleep(600);
+      } catch (err: any) {
+        console.warn(`  WARN (Overpass ways) for ${displayName}: ${err.message}`);
+      }
+    }
+
+    if (hazardsIndex && localBbox) {
+      const localLamps = filterByBbox(hazardsIndex, localBbox);
+      lampElements = localLamps
+        .filter((el) => el.tags.highway === "street_lamp")
+        .map((el) => ({
+          type: el.type,
+          id: Number(el.id.replace(/\D/g, "")),
+          lat: el.lat,
+          lon: el.lon,
+          tags: el.tags,
+        }));
+    } else {
+      try {
+        lampElements = await overpassPost(streetLampsQuery(bbox));
+        await sleep(600);
+      } catch (err: any) {
+        console.warn(`  WARN (Overpass lamps) for ${displayName}: ${err.message}`);
+      }
     }
 
     // ── Parse ways: compute geometry + tags ──

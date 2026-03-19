@@ -29,6 +29,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox as osmFilterByBbox, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env ──────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -358,12 +359,18 @@ interface WaterResult {
 async function enrichSystem(
   system: any,
   systemLines: MultiLineCoords,
+  localIndex: OsmLocalIndex | null,
 ): Promise<WaterResult> {
   const bbox = bboxOfLines(systemLines, 0.002)!;
 
   // ── Query A: water features ──
-  const waterElements = await overpassPost(waterFeaturesQuery(bbox));
-  await sleep(800);
+  let waterElements: any[];
+  if (localIndex) {
+    waterElements = osmFilterByBbox(localIndex, bbox);
+  } else {
+    waterElements = await overpassPost(waterFeaturesQuery(bbox));
+    await sleep(800);
+  }
 
   const waterLines   = buildWaterLines(waterElements);
   const waterTypes   = waterTypesFromElements(waterElements);
@@ -385,9 +392,14 @@ async function enrichSystem(
   const waterNearPercent = parseFloat((sampleNear / sampleTotal).toFixed(4));
   const waterNearScore   = waterNearPercent; // v1: same as percent
 
-  // ── Query B: access point candidates ──
-  const accessElements = await overpassPost(accessPointsQuery(bbox));
-  await sleep(800);
+  // ── Query B: access point candidates (local index covers both query A and B) ──
+  let accessElements: any[];
+  if (localIndex) {
+    accessElements = waterElements; // already includes access-point tags from the combined water category
+  } else {
+    accessElements = await overpassPost(accessPointsQuery(bbox));
+    await sleep(800);
+  }
 
   // ── Build SwimAccessPoint list ──
   const candidates: SwimAccessPoint[] = [];
@@ -510,7 +522,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 
@@ -519,6 +531,17 @@ async function main(): Promise<void> {
     if (!seg.systemRef) continue;
     if (!segsByRef.has(seg.systemRef)) segsByRef.set(seg.systemRef, []);
     segsByRef.get(seg.systemRef)!.push(seg);
+  }
+
+  // ── load local OSM index if available ──
+  let localOsmIndex: OsmLocalIndex | null = null;
+  if (cityFilter) {
+    localOsmIndex = loadOsmCategory(cityFilter, "water");
+    if (localOsmIndex) {
+      console.log(`  Using local OSM cache for water (${localOsmIndex.elements.length} features)\n`);
+    } else {
+      console.log(`  No local OSM cache found for "${cityFilter}" — will use Overpass\n`);
+    }
   }
 
   // ── per-system processing ──
@@ -571,7 +594,7 @@ async function main(): Promise<void> {
 
     let result: WaterResult;
     try {
-      result = await enrichSystem(system, systemLines);
+      result = await enrichSystem(system, systemLines, localOsmIndex);
     } catch (err: any) {
       console.warn(`  ERROR for ${label}: ${err.message}`);
       continue;

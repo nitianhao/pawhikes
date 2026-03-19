@@ -25,6 +25,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env loading ──────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -77,6 +78,8 @@ const cityFilter = typeof args.city === "string" ? args.city : undefined;
 const stateFilter = typeof args.state === "string" ? args.state : undefined;
 const limitArg =
   typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
+const minLength = typeof args["min-length"] === "string" ? parseFloat(args["min-length"]) : undefined;
+const skipExisting = !!args["skip-existing"];
 const isDryRun = !args.write;
 const isVerbose = !!args.verbose;
 
@@ -111,6 +114,7 @@ console.log("appId:    ", appId);
 console.log("token:    ", maskToken(adminToken));
 console.log("city:     ", cityFilter);
 console.log("state:    ", stateFilter ?? "(not set)");
+console.log("min-length:", minLength != null ? `${minLength} mi` : "(all)");
 console.log("limit:    ", limitArg ?? "(all)");
 console.log("mode:     ", isDryRun ? "DRY RUN (pass --write to persist)" : "WRITE");
 console.log("verbose:  ", isVerbose);
@@ -530,6 +534,15 @@ async function main(): Promise<void> {
     console.log(`  After state="${stateFilter}": ${systems.length}`);
   }
 
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) >= minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
+  }
+  if (skipExisting) {
+    systems = systems.filter((s: any) => !s.surfaceLastComputedAt);
+    console.log(`  After skip-existing: ${systems.length}`);
+  }
+
   if (limitArg && !Number.isNaN(limitArg) && limitArg > 0) {
     systems = systems.slice(0, limitArg);
     console.log(`  After --limit ${limitArg}: ${systems.length}`);
@@ -542,7 +555,7 @@ async function main(): Promise<void> {
 
   // ── fetch all segments (needed for geometry reconstruction) ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegments = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegments.length}`);
 
@@ -553,6 +566,17 @@ async function main(): Promise<void> {
     if (!ref) continue;
     if (!segsByRef.has(ref)) segsByRef.set(ref, []);
     segsByRef.get(ref)!.push(seg);
+  }
+
+  // ── load local OSM surface index ──
+  const TRAIL_HW = /^(path|footway|track)$/;
+  const surfaceIndex: OsmLocalIndex | null = loadOsmCategory(
+    cityFilter!, "surface", (el) => TRAIL_HW.test(el.tags.highway ?? ""),
+  );
+  if (surfaceIndex) {
+    console.log(`  Local OSM surface index loaded (${surfaceIndex.elements.length} elements)`);
+  } else {
+    console.log("  No local OSM surface cache — will use Overpass API");
   }
 
   // ── per-system processing ──
@@ -575,10 +599,17 @@ async function main(): Promise<void> {
 
   const updates: { systemId: string; payload: Record<string, any> }[] = [];
 
+  const _t0 = Date.now();
+  const _hb = setInterval(() => {
+    const m = Math.round((Date.now() - _t0) / 60000);
+    console.log(`\n[${new Date().toTimeString().slice(0, 5)}] ${processedCount}/${systems.length} done (${m}m elapsed)\n`);
+  }, 5 * 60 * 1000);
+
   for (const system of systems) {
     sysIdx++;
     const ref: string = system.extSystemRef ?? system.id;
     const label = (system.slug ?? system.name ?? ref).slice(0, 43);
+    console.log(`[${new Date().toTimeString().slice(0, 5)}] [${sysIdx}/${systems.length}] ${label}`);
 
     // Reconstruct system geometry from its segments
     const segs = segsByRef.get(system.extSystemRef) ?? [];
@@ -617,18 +648,28 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Query Overpass
-    console.log(`[${sysIdx}/${systems.length}] ${label}`);
+    // Query OSM ways — prefer local index, fall back to Overpass
     let osmWays: OsmWay[] = [];
-    try {
-      osmWays = await queryOverpass(bbox);
-    } catch (err: any) {
-      console.warn(`  ERROR querying Overpass for ${label}: ${err.message}`);
-      continue;
+    if (surfaceIndex) {
+      const localElements = filterByBbox(surfaceIndex, bbox);
+      const HIGHWAY_RE = /^(path|footway|track)$/;
+      osmWays = localElements
+        .filter((el) => el.tags.highway && HIGHWAY_RE.test(el.tags.highway))
+        .map((el) => ({
+          id: Number(el.id.replace(/\D/g, "")),
+          tags: el.tags,
+          geometry: (el.geometry || []).map((p) => [p.lon, p.lat] as Coord),
+        }))
+        .filter((w) => w.geometry.length >= 2);
+    } else {
+      try {
+        osmWays = await queryOverpass(bbox);
+      } catch (err: any) {
+        console.warn(`  ERROR querying Overpass for ${label}: ${err.message}`);
+        continue;
+      }
+      await sleep(1_500);
     }
-
-    // Throttle between Overpass requests to be a good citizen
-    await sleep(1_500);
 
     // Compute enrichment
     let result: EnrichResult;
@@ -665,8 +706,25 @@ async function main(): Promise<void> {
     };
     updates.push({ systemId: system.id, payload });
     updatedCount++;
+    if (!isDryRun) {
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          await db.transact([(db as any).tx.trailSystems[system.id].update(payload)]);
+          break;
+        } catch (err: any) {
+          if (attempt < 3) {
+            console.warn(`  WARN: DB write failed (attempt ${attempt}): ${err.message}. Retrying in 5s...`);
+            await sleep(5_000);
+          } else {
+            throw err;
+          }
+        }
+      }
+      console.log(`[${new Date().toTimeString().slice(0, 5)}] ${processedCount}/${systems.length} done: ${label}`);
+    }
   }
 
+  clearInterval(_hb);
   console.log("─".repeat(110));
 
   // ── summary ──
@@ -681,26 +739,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (updates.length === 0) {
-    console.log("\nNothing to write.");
-    return;
-  }
-
-  // ── write ──
-  console.log(`\nWriting ${updates.length} system update(s)...`);
-  const BATCH = 50;
-  let written = 0;
-  for (let i = 0; i < updates.length; i += BATCH) {
-    const chunk = updates.slice(i, i + BATCH);
-    const txSteps = chunk.map(({ systemId, payload }) =>
-      (db as any).tx.trailSystems[systemId].update(payload)
-    );
-    await db.transact(txSteps);
-    written += chunk.length;
-    console.log(`  Written ${written}/${updates.length}...`);
-  }
-
-  console.log(`\nDone. ${written} system(s) enriched with surface & paw safety data.`);
+  console.log(`\nDone. ${updates.length} system(s) enriched with surface & paw safety data (written incrementally).`);
   console.log("===================================");
 }
 

@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
+import { filterByBbox, type OsmLocalIndex, type OsmElement } from "../../lib/osmLocal.js";
 
 type Coord = [number, number];
 type Bbox = [number, number, number, number];
@@ -103,6 +104,7 @@ export type AccessRulesContext = {
   trailHeads: TrailHeadLike[];
   rootDir: string;
   overpass?: (query: string) => Promise<any[]>;
+  localIndex?: OsmLocalIndex | null;
   logger?: (line: string) => void;
 };
 
@@ -384,7 +386,7 @@ function representativeHours(headsWithHours: Array<{ hours: string[]; score: num
 }
 
 async function defaultOverpass(query: string): Promise<any[]> {
-  const RETRIES = 3;
+  const RETRIES = 2;
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
     for (const endpoint of OVERPASS_ENDPOINTS) {
       try {
@@ -392,10 +394,10 @@ async function defaultOverpass(query: string): Promise<any[]> {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: `data=${encodeURIComponent(query)}`,
-          signal: AbortSignal.timeout(90_000),
+          signal: AbortSignal.timeout(25_000),
         });
         if (resp.status === 429 || resp.status === 504 || resp.status >= 500) {
-          await sleep(3000 * attempt);
+          await sleep(4000 * attempt);
           continue;
         }
         if (!resp.ok) continue;
@@ -411,7 +413,7 @@ async function defaultOverpass(query: string): Promise<any[]> {
 
 function accessRulesQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   relation["leisure"="park"](${b});
   way["leisure"="park"](${b});
@@ -437,6 +439,22 @@ function accessRulesQuery(bbox: Bbox): string {
   relation["fee"](${b});
 );
 out center tags;`;
+}
+
+function localAccessRules(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    const tags = el.tags ?? {};
+    if (tags.leisure === "park") return true;
+    if (tags.boundary === "protected_area") return true;
+    if (tags.opening_hours != null) return true;
+    if (tags.operator != null) return true;
+    if (tags.owner != null) return true;
+    if (tags.amenity === "parking") return true;
+    if (tags.access != null) return true;
+    if (tags.permit != null) return true;
+    if (tags.fee != null) return true;
+    return false;
+  });
 }
 
 function elementCoord(el: any): Coord | null {
@@ -582,9 +600,14 @@ export async function enrichSystemAccessRules(system: SystemLike, ctx: AccessRul
   const centroid = centroidFromSystemOrLines(system, lines);
 
   let osmElements: any[] = [];
-  const overpass = ctx.overpass ?? defaultOverpass;
   if (bbox) {
-    osmElements = await overpass(accessRulesQuery(bbox));
+    if (ctx.localIndex) {
+      osmElements = localAccessRules(ctx.localIndex, bbox);
+      ctx.logger?.(`[access_rules] provider=local elements=${osmElements.length}`);
+    } else {
+      const overpass = ctx.overpass ?? defaultOverpass;
+      osmElements = await overpass(accessRulesQuery(bbox));
+    }
   }
 
   const hoursFromHeads = headsWithHours.length > 0 && headsWithHours.length >= Math.ceil(linked.length * 0.5);

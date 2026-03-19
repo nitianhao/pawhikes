@@ -23,6 +23,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox as osmFilterByBbox, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env ──────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -66,6 +67,8 @@ const stateFilter  = typeof args.state        === "string" ? args.state        :
 const limitArg     = typeof args.limit        === "string" ? parseInt(args.limit, 10) : undefined;
 const sampleMeters = typeof args.sampleMeters === "string" ? parseFloat(args.sampleMeters) : 50;
 const nearMeters   = typeof args.nearMeters   === "string" ? parseFloat(args.nearMeters)   : 25;
+const minLength    = typeof args["min-length"]  === "string" ? parseFloat(args["min-length"]) : undefined;
+const skipExisting = !!args["skip-existing"];
 const isDryRun     = !args.write;
 const isVerbose    = !!args.verbose;
 
@@ -85,6 +88,7 @@ console.log("appId:        ", appId);
 console.log("token:        ", maskToken(adminToken));
 console.log("city:         ", cityFilter);
 console.log("state:        ", stateFilter ?? "(not set)");
+console.log("min-length:   ", minLength != null ? `${minLength} mi` : "(all)");
 console.log("limit:        ", limitArg ?? "(all)");
 console.log("sampleMeters: ", sampleMeters);
 console.log("nearMeters:   ", nearMeters);
@@ -547,6 +551,14 @@ async function main(): Promise<void> {
     systems = systems.filter((s: any) => !s.state || s.state.toLowerCase().includes(n));
     console.log(`  After state="${stateFilter}": ${systems.length}`);
   }
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) >= minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
+  }
+  if (skipExisting) {
+    systems = systems.filter((s: any) => !s.shadeLastComputedAt);
+    console.log(`  After skip-existing: ${systems.length}`);
+  }
   if (limitArg && !Number.isNaN(limitArg) && limitArg > 0) {
     systems = systems.slice(0, limitArg);
     console.log(`  After --limit ${limitArg}: ${systems.length}`);
@@ -555,7 +567,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry reconstruction ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 
@@ -564,6 +576,17 @@ async function main(): Promise<void> {
     if (!seg.systemRef) continue;
     if (!segsByRef.has(seg.systemRef)) segsByRef.set(seg.systemRef, []);
     segsByRef.get(seg.systemRef)!.push(seg);
+  }
+
+  // ── load local OSM index if available (skips Overpass for that city) ──
+  let localOsmIndex: OsmLocalIndex | null = null;
+  if (cityFilter) {
+    localOsmIndex = loadOsmCategory(cityFilter, "shade");
+    if (localOsmIndex) {
+      console.log(`  Using local OSM cache for shade (${localOsmIndex.elements.length} features)\n`);
+    } else {
+      console.log(`  No local OSM cache found for "${cityFilter}" — will use Overpass\n`);
+    }
   }
 
   // ── per-system loop ──
@@ -586,8 +609,17 @@ async function main(): Promise<void> {
   const classCounts: Record<string, number> = { low: 0, medium: 0, high: 0 };
   const updates: { systemId: string; payload: Record<string, any> }[] = [];
 
+  const _t0 = Date.now();
+  let _idx = 0;
+  const _hb = setInterval(() => {
+    const m = Math.round((Date.now() - _t0) / 60000);
+    console.log(`\n[${new Date().toTimeString().slice(0, 5)}] ${processed}/${systems.length} done (${m}m elapsed)\n`);
+  }, 5 * 60 * 1000);
+
   for (const system of systems) {
     const label = (system.slug ?? system.name ?? system.id).slice(0, 43);
+    _idx++;
+    console.log(`[${new Date().toTimeString().slice(0, 5)}] [${_idx}/${systems.length}] ${label}`);
 
     // Reconstruct geometry
     const segs = segsByRef.get(system.extSystemRef) ?? [];
@@ -616,16 +648,19 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Fetch shade features
+    // Fetch shade features (local OSM cache preferred; Overpass fallback)
     let elements: any[] = [];
-    try {
-      elements = await overpassPost(shadeQuery(bbox));
-    } catch (err: any) {
-      console.warn(`  ERROR (Overpass) for ${label}: ${err.message}`);
-      continue;
+    if (localOsmIndex) {
+      elements = osmFilterByBbox(localOsmIndex, bbox);
+    } else {
+      try {
+        elements = await overpassPost(shadeQuery(bbox));
+      } catch (err: any) {
+        console.warn(`  ERROR (Overpass) for ${label}: ${err.message}`);
+        continue;
+      }
+      await sleep(1_500);
     }
-
-    await sleep(1_500);
 
     // Compute shade
     let result: ShadeResult;
@@ -656,18 +691,21 @@ async function main(): Promise<void> {
       console.log(`  samples: (computed from trail geometry with step=${sampleMeters}m, near=${nearMeters}m)`);
     }
 
-    updates.push({
-      systemId: system.id,
-      payload: {
-        shadeProxyScore:    result.shadeProxyScore,
-        shadeProxyPercent:  result.shadeProxyPercent,
-        shadeClass:         result.shadeClass,
-        shadeSources:       result.shadeSources,
-        shadeLastComputedAt: result.shadeLastComputedAt,
-      },
-    });
+    const shadePayload = {
+      shadeProxyScore:    result.shadeProxyScore,
+      shadeProxyPercent:  result.shadeProxyPercent,
+      shadeClass:         result.shadeClass,
+      shadeSources:       result.shadeSources,
+      shadeLastComputedAt: result.shadeLastComputedAt,
+    };
+    updates.push({ systemId: system.id, payload: shadePayload });
+    if (!isDryRun) {
+      await db.transact([(db as any).tx.trailSystems[system.id].update(shadePayload)]);
+      console.log(`[${new Date().toTimeString().slice(0, 5)}] ${processed}/${systems.length} done: ${label}`);
+    }
   }
 
+  clearInterval(_hb);
   console.log("─".repeat(COL));
 
   // ── summary ──
@@ -686,23 +724,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (updates.length === 0) { console.log("\nNothing to write."); return; }
-
-  // ── write ──
-  console.log(`\nWriting ${updates.length} system update(s)...`);
-  const BATCH = 50;
-  let written = 0;
-  for (let i = 0; i < updates.length; i += BATCH) {
-    const chunk = updates.slice(i, i + BATCH);
-    const txSteps = chunk.map(({ systemId, payload }) =>
-      (db as any).tx.trailSystems[systemId].update(payload),
-    );
-    await db.transact(txSteps);
-    written += chunk.length;
-    console.log(`  Written ${written}/${updates.length}...`);
-  }
-
-  console.log(`\nDone. ${written} system(s) enriched with shade data.`);
+  console.log(`\nDone. ${updates.length} system(s) enriched with shade data (written incrementally).`);
   console.log("================================");
 }
 

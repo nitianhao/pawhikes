@@ -25,6 +25,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByRadius, OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env ───────────────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -68,6 +69,8 @@ const stateFilter    = typeof args.state          === "string" ? args.state     
 const limitArg       = typeof args.limit          === "string" ? parseInt(args.limit, 10) : undefined;
 const parkingRadius  = typeof args.parkingRadius  === "string" ? parseFloat(args.parkingRadius)  : 500;
 const amenityRadius  = typeof args.amenityRadius  === "string" ? parseFloat(args.amenityRadius)  : 250;
+const minLength      = typeof args["min-length"]  === "string" ? parseFloat(args["min-length"]) : undefined;
+const skipExisting   = !!args["skip-existing"];
 const isDryRun       = !args.write;
 const isVerbose      = !!args.verbose;
 
@@ -87,6 +90,7 @@ console.log("appId:          ", appId);
 console.log("token:          ", maskToken(adminToken));
 console.log("city:           ", cityFilter);
 console.log("state:          ", stateFilter ?? "(not set)");
+console.log("min-length:     ", minLength != null ? `${minLength} mi` : "(all)");
 console.log("limit:          ", limitArg ?? "(all)");
 console.log("parkingRadius:  ", parkingRadius, "m");
 console.log("amenityRadius:  ", amenityRadius, "m");
@@ -533,6 +537,14 @@ async function main(): Promise<void> {
     systems = systems.filter((s: any) => !s.state || s.state.toLowerCase().includes(n));
     console.log(`  After state="${stateFilter}": ${systems.length}`);
   }
+  if (minLength != null && minLength > 0) {
+    systems = systems.filter((s: any) => (s.lengthMilesTotal ?? 0) >= minLength);
+    console.log(`  After min-length=${minLength}: ${systems.length}`);
+  }
+  if (skipExisting) {
+    systems = systems.filter((s: any) => !s.logisticsLastComputedAt);
+    console.log(`  After skip-existing: ${systems.length}`);
+  }
   if (limitArg && !Number.isNaN(limitArg) && limitArg > 0) {
     systems = systems.slice(0, limitArg);
     console.log(`  After --limit ${limitArg}: ${systems.length}`);
@@ -541,7 +553,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry reconstruction ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegs = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegs.length}`);
 
@@ -550,6 +562,17 @@ async function main(): Promise<void> {
     if (!seg.systemRef) continue;
     if (!segsByRef.has(seg.systemRef)) segsByRef.set(seg.systemRef, []);
     segsByRef.get(seg.systemRef)!.push(seg);
+  }
+
+  // ── load local OSM index (fallback to Overpass if missing) ──
+  let amenitiesIndex: OsmLocalIndex | null = null;
+  if (cityFilter) {
+    amenitiesIndex = loadOsmCategory(cityFilter, "amenities");
+    if (amenitiesIndex) {
+      console.log(`  Local OSM amenities index loaded (${amenitiesIndex.elements.length} elements)`);
+    } else {
+      console.log("  No local OSM amenities cache — will use Overpass API");
+    }
   }
 
   // ── per-system loop ──
@@ -573,8 +596,17 @@ async function main(): Promise<void> {
 
   const ANCHOR_LABELS: AnchorLabel[] = ["start", "end", "centroid"];
 
+  const _t0 = Date.now();
+  let _idx = 0;
+  const _hb = setInterval(() => {
+    const m = Math.round((Date.now() - _t0) / 60000);
+    console.log(`\n[${new Date().toTimeString().slice(0, 5)}] ${processed}/${systems.length} done (${m}m elapsed)\n`);
+  }, 5 * 60 * 1000);
+
   for (const system of systems) {
     const label = (system.slug ?? system.name ?? system.id).slice(0, 43);
+    _idx++;
+    console.log(`[${new Date().toTimeString().slice(0, 5)}] [${_idx}/${systems.length}] ${label}`);
 
     // Reconstruct geometry from segments
     const segs = segsByRef.get(system.extSystemRef) ?? [];
@@ -620,18 +652,39 @@ async function main(): Promise<void> {
 
     for (const { label: al, coord } of uniqueAnchors) {
       const [lon, lat] = coord;
-      try {
-        const pEls = await overpassPost(parkingQuery(lat, lon, parkingRadius));
-        allParkingEls.set(al, pEls);
-        await sleep(600);
+      if (amenitiesIndex) {
+        const nearParking = filterByRadius(amenitiesIndex, lat, lon, parkingRadius);
+        allParkingEls.set(al, nearParking.filter((el) => {
+          const a = el.tags?.amenity;
+          return a === "parking" || a === "parking_entrance";
+        }));
 
-        const aEls = await overpassPost(amenityQuery(lat, lon, amenityRadius));
-        allAmenityEls.set(al, aEls);
-        await sleep(600);
-      } catch (err: any) {
-        console.warn(`  ERROR (Overpass) for ${label}/${al}: ${err.message}`);
-        allParkingEls.set(al, []);
-        allAmenityEls.set(al, []);
+        const nearAmenity = filterByRadius(amenitiesIndex, lat, lon, amenityRadius);
+        allAmenityEls.set(al, nearAmenity.filter((el) => {
+          const a = el.tags?.amenity;
+          const l = el.tags?.leisure;
+          const t = el.tags?.tourism;
+          const i = el.tags?.information;
+          return a === "toilets" || a === "drinking_water" || a === "bench" ||
+            a === "shelter" || a === "waste_basket" || a === "waste_disposal" ||
+            l === "picnic_table" || t === "information" ||
+            i === "board" || i === "guidepost" || i === "map" ||
+            el.tags?.drinking_water === "yes";
+        }));
+      } else {
+        try {
+          const pEls = await overpassPost(parkingQuery(lat, lon, parkingRadius));
+          allParkingEls.set(al, pEls);
+          await sleep(600);
+
+          const aEls = await overpassPost(amenityQuery(lat, lon, amenityRadius));
+          allAmenityEls.set(al, aEls);
+          await sleep(600);
+        } catch (err: any) {
+          console.warn(`  ERROR (Overpass) for ${label}/${al}: ${err.message}`);
+          allParkingEls.set(al, []);
+          allAmenityEls.set(al, []);
+        }
       }
     }
 
@@ -690,8 +743,13 @@ async function main(): Promise<void> {
       payload.parkingCapacityEstimate = result.parkingCapacityEstimate;
 
     updates.push({ systemId: system.id, payload });
+    if (!isDryRun) {
+      await db.transact([(db as any).tx.trailSystems[system.id].update(payload)]);
+      console.log(`[${new Date().toTimeString().slice(0, 5)}] ${processed}/${systems.length} done: ${label}`);
+    }
   }
 
+  clearInterval(_hb);
   console.log("─".repeat(COL));
 
   // ── summary ──
@@ -712,22 +770,7 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (updates.length === 0) { console.log("\nNothing to write."); return; }
-
-  console.log(`\nWriting ${updates.length} system update(s)...`);
-  const BATCH = 25; // POI arrays can be large
-  let written = 0;
-  for (let i = 0; i < updates.length; i += BATCH) {
-    const chunk = updates.slice(i, i + BATCH);
-    const txSteps = chunk.map(({ systemId, payload }) =>
-      (db as any).tx.trailSystems[systemId].update(payload),
-    );
-    await db.transact(txSteps);
-    written += chunk.length;
-    console.log(`  Written ${written}/${updates.length}...`);
-  }
-
-  console.log(`\nDone. ${written} system(s) enriched with logistics data.`);
+  console.log(`\nDone. ${updates.length} system(s) enriched with logistics data (written incrementally).`);
   console.log("=====================================");
 }
 

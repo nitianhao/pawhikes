@@ -24,6 +24,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 // ── env loading ──────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
@@ -483,7 +484,7 @@ async function main(): Promise<void> {
 
   // ── fetch segments for geometry reconstruction ──
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 10000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 50000 } } });
   const allSegments = entityList(segRes, "trailSegments");
   console.log(`  Total segments in DB: ${allSegments.length}`);
 
@@ -493,6 +494,17 @@ async function main(): Promise<void> {
     if (!ref) continue;
     if (!segsByRef.has(ref)) segsByRef.set(ref, []);
     segsByRef.get(ref)!.push(seg);
+  }
+
+  // ── load local OSM surface index ──
+  const TRAIL_HW = /^(path|footway|track)$/;
+  const surfaceIndex: OsmLocalIndex | null = loadOsmCategory(
+    cityFilter!, "surface", (el) => TRAIL_HW.test(el.tags.highway ?? ""),
+  );
+  if (surfaceIndex) {
+    console.log(`  Local OSM surface index loaded (${surfaceIndex.elements.length} elements)`);
+  } else {
+    console.log("  No local OSM surface cache — will use Overpass API");
   }
 
   // ── process each system ──
@@ -548,16 +560,28 @@ async function main(): Promise<void> {
       continue;
     }
 
-    // Query Overpass
+    // Query OSM ways — prefer local index, fall back to Overpass
     let osmWays: OsmWay[] = [];
-    try {
-      osmWays = await queryOverpass(bbox);
-    } catch (err: any) {
-      console.warn(`  ERROR (Overpass) for ${label}: ${err.message}`);
-      continue;
+    if (surfaceIndex) {
+      const localElements = filterByBbox(surfaceIndex, bbox);
+      const HIGHWAY_RE = /^(path|footway|track)$/;
+      osmWays = localElements
+        .filter((el) => el.tags.highway && HIGHWAY_RE.test(el.tags.highway))
+        .map((el) => ({
+          id: Number(el.id.replace(/\D/g, "")),
+          tags: el.tags,
+          geometry: (el.geometry || []).map((p) => [p.lon, p.lat] as Coord),
+        }))
+        .filter((w) => w.geometry.length >= 2);
+    } else {
+      try {
+        osmWays = await queryOverpass(bbox);
+      } catch (err: any) {
+        console.warn(`  ERROR (Overpass) for ${label}: ${err.message}`);
+        continue;
+      }
+      await sleep(1_500);
     }
-
-    await sleep(1_500); // throttle — be a good Overpass citizen
 
     // Compute
     let result: MudEnrichResult;

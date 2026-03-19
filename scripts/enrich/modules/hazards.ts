@@ -2,6 +2,7 @@ import { createHash } from "crypto";
 import { existsSync } from "fs";
 import { mkdir, readFile, writeFile } from "fs/promises";
 import { basename, join } from "path";
+import { filterByBbox, type OsmLocalIndex, type OsmElement } from "../../lib/osmLocal.js";
 
 type Coord = [number, number]; // [lon, lat]
 type MultiLineCoords = Coord[][];
@@ -82,6 +83,7 @@ export type HazardsContext = {
   segments: SegmentLike[];
   rootDir: string;
   overpass?: (query: string) => Promise<any[]>;
+  localIndex?: OsmLocalIndex | null;
   logger?: (line: string) => void;
 };
 
@@ -331,7 +333,7 @@ async function writeCache(path: string, payload: CachePayload): Promise<void> {
 }
 
 async function defaultOverpass(query: string): Promise<any[]> {
-  const RETRIES = 3;
+  const RETRIES = 2;
   for (let attempt = 1; attempt <= RETRIES; attempt++) {
     for (const endpoint of OVERPASS_ENDPOINTS) {
       try {
@@ -339,11 +341,11 @@ async function defaultOverpass(query: string): Promise<any[]> {
           method: "POST",
           headers: { "Content-Type": "application/x-www-form-urlencoded" },
           body: `data=${encodeURIComponent(query)}`,
-          signal: AbortSignal.timeout(90_000),
+          signal: AbortSignal.timeout(25_000),
         });
 
         if (resp.status === 429 || resp.status === 504 || resp.status >= 500) {
-          await sleep(attempt * 5000);
+          await sleep(attempt * 4000);
           continue;
         }
 
@@ -351,7 +353,7 @@ async function defaultOverpass(query: string): Promise<any[]> {
         const json: any = await resp.json();
         return Array.isArray(json?.elements) ? json.elements : [];
       } catch {
-        if (attempt < RETRIES) await sleep(attempt * 3000);
+        if (attempt < RETRIES) await sleep(attempt * 2000);
       }
     }
   }
@@ -433,7 +435,7 @@ function minDistanceToWay(point: Coord, wayCoords: Coord[]): number {
 
 function roadCrossingsQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   node["highway"="crossing"](${b});
   node["crossing"](${b});
@@ -445,7 +447,7 @@ out center tags;`;
 
 function nearbyHighwaysQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   way["highway"](${b});
 );
@@ -454,7 +456,7 @@ out geom tags;`;
 
 function waterCrossingsQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   node["ford"](${b});
   node["highway"="ford"](${b});
@@ -469,7 +471,7 @@ out center tags;`;
 
 function cliffQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   node["natural"="cliff"](${b});
   way["natural"="cliff"](${b});
@@ -489,7 +491,7 @@ out center tags;`;
 
 function bikeConflictQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   way["highway"="cycleway"](${b});
   way["bicycle"="designated"](${b});
@@ -500,7 +502,7 @@ out center tags;`;
 
 function offLeashQuery(bbox: Bbox): string {
   const b = bboxStr(bbox);
-  return `[out:json][timeout:60];
+  return `[out:json][timeout:22];
 (
   node["leisure"="dog_park"](${b});
   way["leisure"="dog_park"](${b});
@@ -513,6 +515,57 @@ function offLeashQuery(bbox: Bbox): string {
   relation["dogs"="off_leash"](${b});
 );
 out center tags;`;
+}
+
+function localRoadCrossings(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    const tags = el.tags ?? {};
+    return tags.highway === "crossing" || tags.crossing != null;
+  });
+}
+
+function localNearbyHighways(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    if (el.type !== "way" && !el.id.startsWith("w")) return false;
+    const tags = el.tags ?? {};
+    return tags.highway != null;
+  });
+}
+
+function localWaterCrossings(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    const tags = el.tags ?? {};
+    if (tags.ford != null) return true;
+    if (tags.highway === "ford") return true;
+    if (tags.bridge != null) return true;
+    if (tags.waterway === "stream" && (tags.crossing != null || tags.ford != null)) return true;
+    return false;
+  });
+}
+
+function localCliff(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    const tags = el.tags ?? {};
+    if (tags.natural === "cliff" || tags.natural === "scree") return true;
+    if (tags.geological === "cliff") return true;
+    if (tags.man_made === "embankment") return true;
+    return false;
+  });
+}
+
+function localBikeConflict(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    if (el.type !== "way" && !el.id.startsWith("w")) return false;
+    const tags = el.tags ?? {};
+    return tags.highway === "cycleway" || tags.bicycle === "designated" || tags.cycleway != null;
+  });
+}
+
+function localOffLeash(index: OsmLocalIndex, bbox: Bbox): OsmElement[] {
+  return filterByBbox(index, bbox).filter((el) => {
+    const tags = el.tags ?? {};
+    return tags.leisure === "dog_park" || tags.designation === "dog_off_leash" || tags.dogs === "off_leash";
+  });
 }
 
 function scoreAndClass(counts: HazardCounts): { score: number; cls: "low" | "medium" | "high"; reasons: string[] } {
@@ -613,26 +666,42 @@ export async function enrichSystemHazards(system: SystemLike, ctx: HazardsContex
     };
   }
 
-  const overpass = ctx.overpass ?? defaultOverpass;
-
   const expandedRoad = expandBboxMeters(bbox, 60);
   const expandedOffLeash = expandBboxMeters(bbox, 600);
 
-  const [
-    roadCrossingEls,
-    highwaysEls,
-    waterEls,
-    cliffEls,
-    bikeEls,
-    offLeashEls,
-  ] = await Promise.all([
-    overpass(roadCrossingsQuery(expandedRoad)),
-    overpass(nearbyHighwaysQuery(expandedRoad)),
-    overpass(waterCrossingsQuery(expandedRoad)),
-    overpass(cliffQuery(expandBboxMeters(bbox, 80))),
-    overpass(bikeConflictQuery(expandBboxMeters(bbox, 40))),
-    overpass(offLeashQuery(expandedOffLeash)),
-  ]);
+  let roadCrossingEls: any[];
+  let highwaysEls: any[];
+  let waterEls: any[];
+  let cliffEls: any[];
+  let bikeEls: any[];
+  let offLeashEls: any[];
+
+  if (ctx.localIndex) {
+    roadCrossingEls = localRoadCrossings(ctx.localIndex, expandedRoad);
+    highwaysEls = localNearbyHighways(ctx.localIndex, expandedRoad);
+    waterEls = localWaterCrossings(ctx.localIndex, expandedRoad);
+    cliffEls = localCliff(ctx.localIndex, expandBboxMeters(bbox, 80));
+    bikeEls = localBikeConflict(ctx.localIndex, expandBboxMeters(bbox, 40));
+    offLeashEls = localOffLeash(ctx.localIndex, expandedOffLeash);
+    ctx.logger?.(`[hazards] provider=local`);
+  } else {
+    const overpass = ctx.overpass ?? defaultOverpass;
+    [
+      roadCrossingEls,
+      highwaysEls,
+      waterEls,
+      cliffEls,
+      bikeEls,
+      offLeashEls,
+    ] = await Promise.all([
+      overpass(roadCrossingsQuery(expandedRoad)),
+      overpass(nearbyHighwaysQuery(expandedRoad)),
+      overpass(waterCrossingsQuery(expandedRoad)),
+      overpass(cliffQuery(expandBboxMeters(bbox, 80))),
+      overpass(bikeConflictQuery(expandBboxMeters(bbox, 40))),
+      overpass(offLeashQuery(expandedOffLeash)),
+    ]);
+  }
 
   const centroid = centroidFromSystem(system, lines);
 
@@ -725,7 +794,8 @@ export async function enrichSystemHazards(system: SystemLike, ctx: HazardsContex
 
   await mkdir(cacheDir, { recursive: true });
   await writeCache(cachePath, { fingerprint, summary });
-  ctx.logger?.(`[hazards] provider=overpass cache=miss points=${allPoints.length}`);
+  const provider = ctx.localIndex ? "local" : "overpass";
+  ctx.logger?.(`[hazards] provider=${provider} cache=miss points=${allPoints.length}`);
 
   return {
     ok: true,
