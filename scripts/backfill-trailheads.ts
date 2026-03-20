@@ -32,6 +32,7 @@ import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { id as instantId, init } from "@instantdb/admin";
+import { loadOsmCategory, filterByBbox, type OsmLocalIndex, type OsmElement } from "./lib/osmLocal.js";
 
 // ── env ───────────────────────────────────────────────────────────────────────
 
@@ -522,6 +523,15 @@ async function main(): Promise<void> {
   const db = init({ appId: appId!, adminToken: adminToken! });
   console.log("Admin SDK initialized OK\n");
 
+  // ── load local OSM cache if available (avoids Overpass rate limits) ──
+  const cityKey = (cityFilter ?? "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const localAmenities: OsmLocalIndex | null = loadOsmCategory(cityKey, "amenities");
+  const localHazards: OsmLocalIndex | null = loadOsmCategory(cityKey, "hazards");
+  const useLocalOsm = !!(localAmenities || localHazards);
+  console.log(useLocalOsm
+    ? `  Local OSM cache: amenities=${localAmenities ? "✓" : "✗"}, hazards=${localHazards ? "✓" : "✗"} — skipping Overpass\n`
+    : "  No local OSM cache found — will use Overpass API\n");
+
   // ── fetch trailSystems ──
   console.log("Fetching trailSystems...");
   const sysRes = await db.query({ trailSystems: { $: { limit: 5000 } } });
@@ -615,16 +625,22 @@ async function main(): Promise<void> {
 
     const samplePts = samplePoints(systemLines, 30);
 
-    // ── Overpass query ──
-    let elements: any[] = [];
+    // ── Query POIs — local OSM cache or Overpass fallback ──
+    let elements: OsmElement[] | any[] = [];
     let overpassOk = true;
-    try {
-      elements = await overpassPost(accessPOIQuery(bbox));
-      await sleep(800); // polite delay between requests
-    } catch (err: any) {
-      console.warn(`  ERROR (Overpass) for "${label}": ${err.message}`);
-      overpassOk = false;
-      overpassFailed++;
+    if (useLocalOsm) {
+      const fromAmenities: OsmElement[] = localAmenities ? filterByBbox(localAmenities, bbox) : [];
+      const fromHazards: OsmElement[] = localHazards ? filterByBbox(localHazards, bbox) : [];
+      elements = [...fromAmenities, ...fromHazards];
+    } else {
+      try {
+        elements = await overpassPost(accessPOIQuery(bbox));
+        await sleep(800); // polite delay between requests
+      } catch (err: any) {
+        console.warn(`  ERROR (Overpass) for "${label}": ${err.message}`);
+        overpassOk = false;
+        overpassFailed++;
+      }
     }
 
     // ── Score & pick candidates ──

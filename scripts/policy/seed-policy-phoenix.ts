@@ -266,7 +266,7 @@ async function main(): Promise<void> {
   console.log("mode:   ", isCommit ? "COMMIT — will write to DB" : "DRY RUN (pass --commit to write)");
   console.log("==========================\n");
 
-  const systemsRes = await db.query({ trailSystems: { $: { limit: 1000 } } });
+  const systemsRes = await db.query({ trailSystems: { $: { limit: 5000 } } });
   let systems = (systemsRes?.trailSystems ?? []) as Record<string, unknown>[];
 
   systems = systems.filter((s) => s.city === cityFilter);

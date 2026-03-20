@@ -200,7 +200,7 @@ async function main(): Promise<void> {
   // ── QUERY ────────────────────────────────────────────────────────────────────
 
   const systemsRes = await db.query({
-    trailSystems: { $: { limit: 1000 } },
+    trailSystems: { $: { limit: 5000 } },
   });
 
   let systems = systemsRes?.trailSystems ?? [];
