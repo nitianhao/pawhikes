@@ -65,6 +65,7 @@ const args         = parseArgs(process.argv.slice(2));
 const cityFilter   = typeof args.city         === "string" ? args.city         : undefined;
 const stateFilter  = typeof args.state        === "string" ? args.state        : undefined;
 const slugFilter   = typeof args.slug         === "string" ? args.slug         : undefined;
+const osmCityArg   = typeof args["osm-city"]  === "string" ? args["osm-city"]  : undefined;
 const limitArg     = typeof args.limit        === "string" ? parseInt(args.limit, 10) : undefined;
 const sampleMeters = typeof args.sampleMeters === "string" ? parseFloat(args.sampleMeters) : 50;
 const nearMeters   = typeof args.nearMeters   === "string" ? parseFloat(args.nearMeters)   : 25;
@@ -503,7 +504,7 @@ async function main(): Promise<void> {
   }
 
   // ── load local OSM index if available ──
-  const osmCityKey = cityFilter ?? slugFilter ?? "";
+  const osmCityKey = osmCityArg ?? cityFilter ?? slugFilter ?? "";
   let localOsmIndex: OsmLocalIndex | null = null;
   if (osmCityKey) {
     localOsmIndex = loadOsmCategory(osmCityKey, "shade");

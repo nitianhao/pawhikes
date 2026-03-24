@@ -66,9 +66,10 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 }
 
 const args       = parseArgs(process.argv.slice(2));
-const cityFilter = typeof args.city  === "string" ? args.city  : undefined;
-const slugFilter = typeof args.slug  === "string" ? args.slug  : undefined;
-const limitArg   = typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
+const cityFilter = typeof args.city          === "string" ? args.city          : undefined;
+const slugFilter = typeof args.slug          === "string" ? args.slug          : undefined;
+const osmCityArg = typeof args["osm-city"]   === "string" ? args["osm-city"]   : undefined;
+const limitArg   = typeof args.limit         === "string" ? parseInt(args.limit, 10) : undefined;
 const isDryRun   = !args.write;
 const isVerbose  = !!args.verbose;
 
@@ -440,7 +441,7 @@ async function main(): Promise<void> {
   }
 
   // ── load local OSM index if available ──
-  const osmCityKey = cityFilter ?? slugFilter ?? "";
+  const osmCityKey = osmCityArg ?? cityFilter ?? slugFilter ?? "";
   let localOsmIndex: OsmLocalIndex | null = null;
   if (osmCityKey) {
     localOsmIndex = loadOsmCategory(osmCityKey, "water");

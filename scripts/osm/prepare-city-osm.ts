@@ -74,6 +74,12 @@ const CITY_CONFIGS: Record<string, CityConfig> = {
     state: "arizona",
     geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
   },
+  austin: {
+    // Full Austin metro: Georgetown (N) → Kyle/Buda (S), Lakeway/Bee Cave (W) → Manor/Pflugerville (E)
+    bbox: [-98.1, 29.85, -97.3, 30.75],
+    state: "texas",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf",
+  },
 };
 
 // ── osmium tag filter expressions per category ────────────────────────────────

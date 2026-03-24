@@ -64,6 +64,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 const args         = parseArgs(process.argv.slice(2));
 const cityFilter   = typeof args.city         === "string" ? args.city         : undefined;
 const stateFilter  = typeof args.state        === "string" ? args.state        : undefined;
+const osmCityArg   = typeof args["osm-city"]  === "string" ? args["osm-city"]  : undefined;
 const limitArg     = typeof args.limit        === "string" ? parseInt(args.limit, 10) : undefined;
 const sampleMeters = typeof args.sampleMeters === "string" ? parseFloat(args.sampleMeters) : 50;
 const nearMeters   = typeof args.nearMeters   === "string" ? parseFloat(args.nearMeters)   : 25;
@@ -580,12 +581,13 @@ async function main(): Promise<void> {
 
   // ── load local OSM index if available (skips Overpass for that city) ──
   let localOsmIndex: OsmLocalIndex | null = null;
-  if (cityFilter) {
-    localOsmIndex = loadOsmCategory(cityFilter, "shade");
+  const osmCityKey = osmCityArg ?? cityFilter;
+  if (osmCityKey) {
+    localOsmIndex = loadOsmCategory(osmCityKey, "shade");
     if (localOsmIndex) {
       console.log(`  Using local OSM cache for shade (${localOsmIndex.elements.length} features)\n`);
     } else {
-      console.log(`  No local OSM cache found for "${cityFilter}" — will use Overpass\n`);
+      console.log(`  No local OSM cache found for "${osmCityKey}" — will use Overpass\n`);
     }
   }
 

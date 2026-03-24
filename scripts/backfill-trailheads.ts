@@ -75,6 +75,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 const args           = parseArgs(process.argv.slice(2));
 const cityFilter     = typeof args.city           === "string" ? args.city           : undefined;
 const stateFilter    = typeof args.state          === "string" ? args.state          : undefined;
+const osmCityArg     = typeof args["osm-city"]    === "string" ? args["osm-city"]    : undefined;
 const limitArg       = typeof args.limit          === "string" ? parseInt(args.limit, 10) : undefined;
 const maxPerCluster  = typeof args.maxPerCluster  === "string" ? parseInt(args.maxPerCluster, 10) : 3;
 const isDryRun       = !!args.dryRun;
@@ -524,7 +525,7 @@ async function main(): Promise<void> {
   console.log("Admin SDK initialized OK\n");
 
   // ── load local OSM cache if available (avoids Overpass rate limits) ──
-  const cityKey = (cityFilter ?? "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const cityKey = (osmCityArg ?? cityFilter ?? "").toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const localAmenities: OsmLocalIndex | null = loadOsmCategory(cityKey, "amenities");
   const localHazards: OsmLocalIndex | null = loadOsmCategory(cityKey, "hazards");
   const useLocalOsm = !!(localAmenities || localHazards);
