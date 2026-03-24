@@ -30,6 +30,7 @@
     "instant:push:migrateAustinKeys": "node scripts/instant-push-migrate-austin-keys.mjs",
     "instant:push:migrateAustinLinkKeys": "node scripts/instant-push-migrate-austin-linkkeys.mjs",
     "austin:ingest": "node scripts/ingest-austin-open-data.mjs",
+    "austin:ingest:osm": "tsx scripts/ingest-austin-osm.ts",
     "houston:ingest": "node scripts/ingest-houston-data.mjs",
     "dallas:ingest": "node scripts/ingest-dallas-data.mjs",
     "fortworth:ingest": "node scripts/ingest-fort-worth-data.mjs",
