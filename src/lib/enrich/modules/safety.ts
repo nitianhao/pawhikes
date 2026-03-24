@@ -119,7 +119,12 @@ out center tags;`;
 
 export async function computeSafety(
   system: any,
-  deps: { overpass: (query: string) => Promise<any>; radiusMeters?: number }
+  deps: {
+    overpass: (query: string) => Promise<any>;
+    radiusMeters?: number;
+    localVets?: { elements: any[]; bboxes: ([number, number, number, number] | null)[] } | null;
+    filterByRadius?: (index: any, lat: number, lon: number, radiusM: number) => any[];
+  }
 ): Promise<SafetyOutput> {
   const s: AnyRecord = system && typeof system === "object" ? system : {};
   const crowdSignals: AnyRecord = s.crowdSignals && typeof s.crowdSignals === "object" ? s.crowdSignals : {};
@@ -189,8 +194,14 @@ export async function computeSafety(
     typeof deps.radiusMeters === "number" && Number.isFinite(deps.radiusMeters) && deps.radiusMeters > 0
       ? deps.radiusMeters
       : 10_000;
-  const raw = await deps.overpass(vetQuery(lat, lon, radiusMeters));
-  const elements: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.elements) ? raw.elements : [];
+
+  let elements: any[];
+  if (deps.localVets && deps.filterByRadius) {
+    elements = deps.filterByRadius(deps.localVets, lat, lon, radiusMeters);
+  } else {
+    const raw = await deps.overpass(vetQuery(lat, lon, radiusMeters));
+    elements = Array.isArray(raw) ? raw : Array.isArray(raw?.elements) ? raw.elements : [];
+  }
 
   const vets: SafetyVet[] = [];
   const seen = new Set<string>();

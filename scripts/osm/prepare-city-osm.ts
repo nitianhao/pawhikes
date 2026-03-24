@@ -159,6 +159,12 @@ const CATEGORIES: Record<string, string[]> = {
     "n/amenity=bar",
     "n/amenity=fast_food",
   ],
+  vets: [
+    "nwr/amenity=veterinary",
+    "nwr/healthcare=veterinary",
+    "nwr/healthcare=animal_hospital",
+    "nwr/amenity=animal_hospital",
+  ],
   hazards: [
     "nwr/highway=crossing",
     "nwr/crossing",

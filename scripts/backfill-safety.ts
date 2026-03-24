@@ -13,6 +13,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { init } from "@instantdb/admin";
 import { computeSafety } from "../src/lib/enrich/modules/safety";
+import { loadOsmCategory, filterByRadius, type OsmLocalIndex } from "./lib/osmLocal.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -111,6 +112,7 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   const cityFilter = typeof args.city === "string" ? args.city : undefined;
   const stateFilter = typeof args.state === "string" ? args.state : undefined;
+  const osmCityArg = typeof args["osm-city"] === "string" ? args["osm-city"] : undefined;
   const limitArg = typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
   const isDryRun = parseBool(args.dry, true);
   const batchSizeRaw = typeof args.batchSize === "string" ? parseInt(args.batchSize, 10) : 20;
@@ -166,6 +168,17 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Load local OSM vets index if available — avoids Overpass for each system
+  const osmCityKey = osmCityArg ?? cityFilter;
+  let localVets: OsmLocalIndex | null = null;
+  if (osmCityKey) {
+    localVets = loadOsmCategory(osmCityKey, "vets");
+    console.log(localVets
+      ? `  Local OSM vets cache: ${localVets.elements.length} features — skipping Overpass\n`
+      : `  No local OSM vets cache for "${osmCityKey}" — will use Overpass\n`
+    );
+  }
+
   let totalScanned = 0;
   let updated = 0;
   let failed = 0;
@@ -177,7 +190,12 @@ async function main(): Promise<void> {
     const slug = String(system.slug ?? system.extSystemRef ?? system.id ?? "unknown");
 
     try {
-      const safety = await computeSafety(system, { overpass: overpassPost, radiusMeters });
+      const safety = await computeSafety(system, {
+        overpass: overpassPost,
+        radiusMeters,
+        localVets,
+        filterByRadius,
+      });
       const nearest = safety.nearbyVets[0];
       const nearestLabel = nearest ? (nearest.name ?? nearest.osmId) : "none";
       const modeLabel = isDryRun ? "DRY" : "WRITE";
