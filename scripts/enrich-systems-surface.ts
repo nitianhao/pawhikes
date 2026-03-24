@@ -75,6 +75,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 
 const args = parseArgs(process.argv.slice(2));
 const cityFilter = typeof args.city === "string" ? args.city : undefined;
+const osmCityArg = typeof args["osm-city"] === "string" ? args["osm-city"] : undefined;
 const stateFilter = typeof args.state === "string" ? args.state : undefined;
 const limitArg =
   typeof args.limit === "string" ? parseInt(args.limit, 10) : undefined;
@@ -571,7 +572,7 @@ async function main(): Promise<void> {
   // ── load local OSM surface index ──
   const TRAIL_HW = /^(path|footway|track)$/;
   const surfaceIndex: OsmLocalIndex | null = loadOsmCategory(
-    cityFilter!, "surface", (el) => TRAIL_HW.test(el.tags.highway ?? ""),
+    osmCityArg ?? cityFilter!, "surface", (el) => TRAIL_HW.test(el.tags.highway ?? ""),
   );
   if (surfaceIndex) {
     console.log(`  Local OSM surface index loaded (${surfaceIndex.elements.length} elements)`);

@@ -65,6 +65,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 
 const args           = parseArgs(process.argv.slice(2));
 const cityFilter     = typeof args.city           === "string" ? args.city           : undefined;
+const osmCityArg     = typeof args["osm-city"]    === "string" ? args["osm-city"]    : undefined;
 const stateFilter    = typeof args.state          === "string" ? args.state          : undefined;
 const limitArg       = typeof args.limit          === "string" ? parseInt(args.limit, 10) : undefined;
 const parkingRadius  = typeof args.parkingRadius  === "string" ? parseFloat(args.parkingRadius)  : 500;
@@ -567,7 +568,7 @@ async function main(): Promise<void> {
   // ── load local OSM index (fallback to Overpass if missing) ──
   let amenitiesIndex: OsmLocalIndex | null = null;
   if (cityFilter) {
-    amenitiesIndex = loadOsmCategory(cityFilter, "amenities");
+    amenitiesIndex = loadOsmCategory(osmCityArg ?? cityFilter, "amenities");
     if (amenitiesIndex) {
       console.log(`  Local OSM amenities index loaded (${amenitiesIndex.elements.length} elements)`);
     } else {

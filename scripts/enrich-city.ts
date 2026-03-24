@@ -254,6 +254,7 @@ async function main(): Promise<void> {
 
   const args = parseArgs(process.argv.slice(2));
   const cityFilter = typeof args.city === "string" ? args.city : undefined;
+  const osmCityArg = typeof args["osm-city"] === "string" ? args["osm-city"] : undefined;
   const stateFilter = typeof args.state === "string" ? args.state : undefined;
   const slugFilter = typeof args.slug === "string" ? args.slug : undefined;
   const modules = parseModules(args.modules);
@@ -376,7 +377,7 @@ async function main(): Promise<void> {
   let hazardsLocalIndex: OsmLocalIndex | null = null;
   if ((runHazards || runAccessRules) && cityFilter) {
     console.log("\nLoading local OSM hazards index...");
-    hazardsLocalIndex = loadOsmCategory(cityFilter, "hazards");
+    hazardsLocalIndex = loadOsmCategory(osmCityArg ?? cityFilter, "hazards");
     if (hazardsLocalIndex) {
       console.log(`  Local hazards index: ${hazardsLocalIndex.elements.length} elements`);
     } else {

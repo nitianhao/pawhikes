@@ -66,6 +66,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 
 const args          = parseArgs(process.argv.slice(2));
 const cityFilter    = typeof args.city           === "string" ? args.city           : undefined;
+const osmCityArg    = typeof args["osm-city"]    === "string" ? args["osm-city"]    : undefined;
 const stateFilter   = typeof args.state          === "string" ? args.state          : undefined;
 const limitArg      = typeof args.limit          === "string" ? parseInt(args.limit, 10) : undefined;
 const anchorRadius  = typeof args.anchorRadius   === "string" ? parseFloat(args.anchorRadius)  : 400;
@@ -514,9 +515,9 @@ async function main(): Promise<void> {
   let hazardsIndex: OsmLocalIndex | null = null;
   let landuseIndex: OsmLocalIndex | null = null;
   if (cityFilter) {
-    amenitiesIndex = loadOsmCategory(cityFilter, "amenities");
-    hazardsIndex   = loadOsmCategory(cityFilter, "hazards");
-    landuseIndex   = loadOsmCategory(cityFilter, "landuse");
+    amenitiesIndex = loadOsmCategory(osmCityArg ?? cityFilter, "amenities");
+    hazardsIndex   = loadOsmCategory(osmCityArg ?? cityFilter, "hazards");
+    landuseIndex   = loadOsmCategory(osmCityArg ?? cityFilter, "landuse");
     const loaded = [
       amenitiesIndex ? "amenities" : null,
       hazardsIndex ? "hazards" : null,

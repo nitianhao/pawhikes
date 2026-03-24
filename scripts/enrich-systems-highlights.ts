@@ -62,6 +62,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 
 const args         = parseArgs(process.argv.slice(2));
 const cityFilter   = typeof args.city       === "string" ? args.city       : undefined;
+const osmCityArg   = typeof args["osm-city"] === "string" ? args["osm-city"] : undefined;
 const stateFilter  = typeof args.state      === "string" ? args.state      : undefined;
 const limitArg     = typeof args.limit      === "string" ? parseInt(args.limit, 10) : undefined;
 const nearMeters   = typeof args.nearMeters === "string" ? parseFloat(args.nearMeters) : 150;
@@ -425,7 +426,7 @@ async function main(): Promise<void> {
   // ── load local OSM index if available ──
   let localOsmIndex: OsmLocalIndex | null = null;
   if (cityFilter) {
-    localOsmIndex = loadOsmCategory(cityFilter, "highlights");
+    localOsmIndex = loadOsmCategory(osmCityArg ?? cityFilter, "highlights");
     if (localOsmIndex) {
       console.log(`  Using local OSM cache for highlights (${localOsmIndex.elements.length} features)\n`);
     } else {

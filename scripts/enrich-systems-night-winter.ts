@@ -64,6 +64,7 @@ function parseArgs(argv: string[]): Record<string, string | boolean> {
 
 const args         = parseArgs(process.argv.slice(2));
 const cityFilter   = typeof args.city         === "string" ? args.city         : undefined;
+const osmCityArg   = typeof args["osm-city"]  === "string" ? args["osm-city"]  : undefined;
 const stateFilter  = typeof args.state        === "string" ? args.state        : undefined;
 const limitArg     = typeof args.limit        === "string" ? parseInt(args.limit, 10) : undefined;
 const sampleMeters = typeof args.sampleMeters === "string" ? parseFloat(args.sampleMeters) : 50;
@@ -543,13 +544,13 @@ async function main(): Promise<void> {
   }
 
   // ── load local OSM indexes ──
-  const surfaceIndex: OsmLocalIndex | null = loadOsmCategory(cityFilter!, "surface");
+  const surfaceIndex: OsmLocalIndex | null = loadOsmCategory(osmCityArg ?? cityFilter!, "surface");
   if (surfaceIndex) {
     console.log(`  Local OSM surface index loaded (${surfaceIndex.elements.length} elements)`);
   } else {
     console.log("  No local OSM surface cache — will use Overpass API for walkable ways");
   }
-  const hazardsIndex: OsmLocalIndex | null = loadOsmCategory(cityFilter!, "hazards");
+  const hazardsIndex: OsmLocalIndex | null = loadOsmCategory(osmCityArg ?? cityFilter!, "hazards");
   if (hazardsIndex) {
     console.log(`  Local OSM hazards index loaded (${hazardsIndex.elements.length} elements)`);
   } else {
