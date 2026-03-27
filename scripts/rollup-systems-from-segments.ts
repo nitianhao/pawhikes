@@ -462,6 +462,15 @@ async function main(): Promise<void> {
     const rollup = computeRollup(segs);
     if (!rollup.bbox) noGeomCount++;
 
+    // Skip systems under 1 mile — they are not displayed and should not be stored.
+    if (rollup.lengthMilesTotal != null && rollup.lengthMilesTotal <= 1) {
+      console.log(
+        `${"SKIP (<1mi)".padEnd(13)}${(system.slug ?? system.name ?? ref).slice(0, 45).padEnd(46)}`
+      );
+      skippedCount++;
+      continue;
+    }
+
     const changed = rollupChanged(system, rollup);
 
     const milesStr =
