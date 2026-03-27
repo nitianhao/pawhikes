@@ -80,6 +80,54 @@ const CITY_CONFIGS: Record<string, CityConfig> = {
     state: "texas",
     geofabrikUrl: "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf",
   },
+  houston: {
+    // City of Houston + Bayou Greenway corridors (Harris County core)
+    bbox: [-95.8, 29.5, -95.0, 30.1],
+    state: "texas",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf",
+  },
+  dallas: {
+    // City of Dallas proper
+    bbox: [-97.0, 32.6, -96.5, 33.0],
+    state: "texas",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf",
+  },
+  "fort-worth": {
+    // City of Fort Worth (matches Overpass bbox in ingest script)
+    bbox: [-97.65, 32.5, -97.0, 33.05],
+    state: "texas",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/texas-latest.osm.pbf",
+  },
+  "oklahoma-city": {
+    // OKC metro (matches Overpass ingest bbox; covers Edmond to the north)
+    bbox: [-97.80, 35.30, -97.20, 35.75],
+    state: "oklahoma",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/oklahoma-latest.osm.pbf",
+  },
+  norman: {
+    // Norman, OK — south of OKC along I-35 (OU trails, Thunderbird Lake area)
+    bbox: [-97.55, 35.15, -97.35, 35.30],
+    state: "oklahoma",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/oklahoma-latest.osm.pbf",
+  },
+  edmond: {
+    // Edmond, OK — north suburb of OKC (Mitch Park, Hafer Park)
+    bbox: [-97.55, 35.60, -97.35, 35.75],
+    state: "oklahoma",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/oklahoma-latest.osm.pbf",
+  },
+  tulsa: {
+    // Tulsa, OK — River Parks, Turkey Mountain, Osage Hills
+    bbox: [-96.10, 35.95, -95.75, 36.30],
+    state: "oklahoma",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/oklahoma-latest.osm.pbf",
+  },
+  "broken-arrow": {
+    // Broken Arrow, OK — SE suburb of Tulsa (Fry Creek, Riverwalk)
+    bbox: [-95.90, 35.95, -95.65, 36.15],
+    state: "oklahoma",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/oklahoma-latest.osm.pbf",
+  },
 };
 
 // ── osmium tag filter expressions per category ────────────────────────────────

@@ -363,7 +363,7 @@ async function main(): Promise<void> {
   }
 
   console.log("\nFetching trailSegments...");
-  const segRes = await db.query({ trailSegments: { $: { limit: 15000 } } });
+  const segRes = await db.query({ trailSegments: { $: { limit: 25000 } } });
   const segments = entityList<TrailSegment>(segRes, "trailSegments");
   console.log(`  Loaded segments: ${segments.length}`);
   let trailHeads: TrailHead[] = [];
