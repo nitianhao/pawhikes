@@ -66,7 +66,7 @@ const loadTrailSystemsIndexCached = unstable_cache(
 
     return Array.isArray(systems) ? (systems as TrailSystemsIndexRecord[]) : [];
   },
-  ["trail-systems-index-v4"],
+  ["trail-systems-index-v5"],
   {
     revalidate: 1800,
     tags: ["trail-systems-index"],

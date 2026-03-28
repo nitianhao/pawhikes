@@ -128,6 +128,126 @@ const CITY_CONFIGS: Record<string, CityConfig> = {
     state: "oklahoma",
     geofabrikUrl: "https://download.geofabrik.de/north-america/us/oklahoma-latest.osm.pbf",
   },
+  tucson: {
+    // Tucson, AZ — Saguaro NP, Rillito River Park, Pantano Riverwalk
+    bbox: [-111.10, 32.06, -110.70, 32.40],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  flagstaff: {
+    // Flagstaff, AZ — Buffalo Park, Mt Elden, Walnut Canyon
+    bbox: [-111.75, 35.10, -111.55, 35.25],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  sedona: {
+    // Sedona, AZ — Red Rock State Park, Bell Rock, Cathedral Rock
+    bbox: [-111.95, 34.80, -111.75, 34.95],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  prescott: {
+    // Prescott, AZ — Prescott National Forest, Thumb Butte, Willow Lake
+    bbox: [-112.55, 34.50, -112.35, 34.65],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  yuma: {
+    // Yuma, AZ — Colorado River path, Gateway Park
+    bbox: [-114.75, 32.55, -114.45, 32.80],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  "lake-havasu-city": {
+    // Lake Havasu City, AZ — SARA Park, Mohave Wash, waterfront trail
+    bbox: [-114.45, 34.40, -114.25, 34.60],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  "sierra-vista": {
+    // Sierra Vista, AZ — San Pedro River trail, Huachuca Mountains
+    bbox: [-110.40, 31.45, -110.20, 31.65],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  "casa-grande": {
+    // Casa Grande, AZ — Dave White Regional Park, Pinal area
+    bbox: [-111.85, 32.82, -111.65, 32.98],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  kingman: {
+    // Kingman, AZ — Hualapai Mountain Park, Andy Devine area
+    bbox: [-114.15, 35.15, -113.95, 35.30],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  "bullhead-city": {
+    // Bullhead City, AZ — Colorado River waterfront, Laughlin area
+    bbox: [-114.65, 35.05, -114.45, 35.25],
+    state: "arizona",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/arizona-latest.osm.pbf",
+  },
+  albuquerque: {
+    // Albuquerque, NM — Bosque Trail, Sandia Foothills, Paseo del Bosque
+    bbox: [-106.85, 35.00, -106.45, 35.25],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  "santa-fe": {
+    // Santa Fe, NM — Dale Ball Trails, Atalaya Mountain, Santa Fe Rail Trail
+    bbox: [-106.00, 35.60, -105.90, 35.72],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  "las-cruces": {
+    // Las Cruces, NM — Tortugas Mountain, Mesilla Valley Bosque, Organ Mountains
+    bbox: [-106.85, 32.25, -106.65, 32.42],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  "rio-rancho": {
+    // Rio Rancho, NM — Petroglyph NM, Mesa trails, Cabezon area
+    bbox: [-107.10, 35.20, -106.85, 35.35],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  roswell: {
+    // Roswell, NM — Spring River Park, Bottomless Lakes, greenway paths
+    bbox: [-104.60, 33.35, -104.45, 33.45],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  farmington: {
+    // Farmington, NM — Animas River Trail, Piñon Hills, Berg Park
+    bbox: [-108.30, 36.68, -108.12, 36.80],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  "south-valley": {
+    // South Valley, NM — Bernalillo Co unincorporated, Bosque area
+    bbox: [-106.77, 34.95, -106.65, 35.02],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  clovis: {
+    // Clovis, NM — Ned Houk Park, Greene Acres
+    bbox: [-103.25, 34.38, -103.17, 34.45],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  hobbs: {
+    // Hobbs, NM — Harry McAdams Park, Lea County trails
+    bbox: [-103.18, 32.67, -103.09, 32.74],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
+  alamogordo: {
+    // Alamogordo, NM — White Sands, Lincoln NF, Sacramento Mountains
+    bbox: [-106.00, 32.85, -105.92, 32.95],
+    state: "new-mexico",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
+  },
 };
 
 // ── osmium tag filter expressions per category ────────────────────────────────
@@ -186,6 +306,14 @@ const CATEGORIES: Record<string, string[]> = {
     "n/information=map",
     "n/amenity=waste_basket",
     "n/amenity=waste_disposal",
+  ],
+  trails: [
+    // Named trail ways — for local ingest (replaces Overpass in ingest scripts)
+    "w/highway=footway",
+    "w/highway=path",
+    "w/highway=track",
+    "w/highway=cycleway",
+    "w/highway=bridleway",
   ],
   surface: [
     "w/highway=path",
