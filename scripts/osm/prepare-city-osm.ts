@@ -248,6 +248,128 @@ const CITY_CONFIGS: Record<string, CityConfig> = {
     state: "new-mexico",
     geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-mexico-latest.osm.pbf",
   },
+  // ── California ───────────────────────────────────────────────────────────────
+  "los-angeles": {
+    // Los Angeles, CA — Griffith Park, Santa Monica Mtns, Runyon Canyon, Topanga
+    bbox: [-118.66, 33.90, -118.16, 34.34],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  "san-diego": {
+    // San Diego, CA — Torrey Pines, Mission Trails, Cowles Mountain
+    bbox: [-117.30, 32.62, -116.90, 32.98],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  "san-jose": {
+    // San Jose, CA — Alum Rock, Quicksilver, Sierra Vista OSP
+    bbox: [-122.05, 37.20, -121.70, 37.44],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  "san-francisco": {
+    // San Francisco, CA — Golden Gate Park, Presidio, Lands End, Glen Canyon
+    bbox: [-122.52, 37.70, -122.35, 37.82],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  fresno: {
+    // Fresno, CA — Woodward Park, Lewis Eaton Trail, San Joaquin River
+    bbox: [-119.90, 36.68, -119.65, 36.85],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  sacramento: {
+    // Sacramento, CA — American River Parkway, Folsom area
+    bbox: [-121.60, 38.48, -121.35, 38.68],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  "long-beach": {
+    // Long Beach, CA — El Dorado Park, LA River Trail south
+    bbox: [-118.25, 33.73, -118.06, 33.85],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  oakland: {
+    // Oakland, CA — Redwood Regional, Joaquin Miller, Lake Merritt
+    bbox: [-122.35, 37.73, -122.10, 37.88],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  bakersfield: {
+    // Bakersfield, CA — Kern River Parkway, Hart Park
+    bbox: [-119.15, 35.30, -118.90, 35.45],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  anaheim: {
+    // Anaheim, CA — Yorba Regional, Santiago Oaks, Oak Canyon
+    bbox: [-117.98, 33.78, -117.75, 33.90],
+    state: "california",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/california-latest.osm.pbf",
+  },
+  // ── New York ──────────────────────────────────────────────────────────────────
+  "new-york-city": {
+    // NYC 5 boroughs — Central Park, Prospect Park, Van Cortlandt, Greenbelt, Pelham Bay
+    bbox: [-74.26, 40.49, -73.70, 40.92],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  buffalo: {
+    // Buffalo, NY — Delaware Park, Tifft Nature Preserve, Outer Harbor
+    bbox: [-78.95, 42.83, -78.78, 42.97],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  rochester: {
+    // Rochester, NY — Genesee Riverway, Highland Park, Durand Eastman
+    bbox: [-77.70, 43.10, -77.53, 43.23],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  yonkers: {
+    // Yonkers, NY — Old Croton Aqueduct, Tibbetts Brook Park, Untermyer Gardens
+    bbox: [-73.91, 40.91, -73.82, 40.98],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  syracuse: {
+    // Syracuse, NY — Onondaga Creekwalk, Clark Reservation, Green Lakes
+    bbox: [-76.22, 42.98, -76.08, 43.10],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  albany: {
+    // Albany, NY — Corning Preserve, Pine Bush, Washington Park
+    bbox: [-73.82, 42.61, -73.72, 42.72],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  "new-rochelle": {
+    // New Rochelle, NY — Glen Island Park, Twin Lakes, Huguenot trails
+    bbox: [-73.80, 40.88, -73.74, 40.94],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  "mount-vernon": {
+    // Mount Vernon, NY — Hutchinson River Parkway, Willson's Woods
+    bbox: [-73.85, 40.90, -73.80, 40.93],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  schenectady: {
+    // Schenectady, NY — Mohawk-Hudson Bike-Hike Trail, Central Park, Vale Park
+    bbox: [-73.98, 42.77, -73.88, 42.84],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
+  utica: {
+    // Utica, NY — Mohawk River Trail, Roscoe Conkling Park, Proctor Park
+    bbox: [-75.28, 43.07, -75.17, 43.13],
+    state: "new-york",
+    geofabrikUrl: "https://download.geofabrik.de/north-america/us/new-york-latest.osm.pbf",
+  },
 };
 
 // ── osmium tag filter expressions per category ────────────────────────────────
