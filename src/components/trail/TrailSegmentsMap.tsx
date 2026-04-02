@@ -727,6 +727,7 @@ export function TrailSegmentsMap({
                         width={120}
                         height={80}
                         sizes="120px"
+                        unoptimized
                         style={{
                           width: "100%",
                           maxWidth: "120px",

@@ -32,7 +32,7 @@ import { buildLongTailCityPath, evaluateLongTailIntentsForCity } from "@/lib/seo
 
 type TrailSystemRecord = TrailSystemsIndexRecord;
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   const systems = await getTrailSystemsIndex();

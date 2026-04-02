@@ -68,7 +68,7 @@ const loadTrailSystemsIndexCached = unstable_cache(
   },
   ["trail-systems-index-v6"],
   {
-    revalidate: 1800,
+    revalidate: 3600,
     tags: ["trail-systems-index"],
   }
 );

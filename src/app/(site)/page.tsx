@@ -58,7 +58,7 @@ type CoverageStateGroup = {
 
 const HOME_DESCRIPTION =
   "Discover dog-friendly hiking trails with practical details on leash policy, shade, water access, surfaces, and trail logistics.";
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 const sectionCard: React.CSSProperties = {
   border: "1px solid #e5e7eb",

@@ -238,6 +238,7 @@ function TrailheadCard({
               width={120}
               height={90}
               sizes="120px"
+              unoptimized
               style={{
                 width: "100%",
                 height: "100%",

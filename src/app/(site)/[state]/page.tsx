@@ -35,7 +35,7 @@ type CityAccum = Omit<CityData, "shadePercent"> & {
   _shadeN: number;
 };
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   const systems = await getTrailSystemsIndex();

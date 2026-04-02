@@ -11,9 +11,9 @@ const nextConfig: NextConfig = {
   // Compress responses with gzip (default true, made explicit).
   compress: true,
 
-  // Allow images from Google Places (trailhead photos) and static assets.
+  // Image optimization disabled on external images (unoptimized prop) to avoid
+  // Vercel transformation costs. Remote patterns kept for next/image src validation.
   images: {
-    formats: ["image/avif", "image/webp"],
     remotePatterns: [
       {
         protocol: "https",

@@ -15,7 +15,7 @@ import { CityTrailCardList } from "@/components/city/CityTrailCardList.client";
 import type { TrailCardData } from "@/components/city/CityTrailCardList.client";
 import { buildGeoClusterPath, getGeoClustersForCity } from "@/lib/seo/geographic";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 function formatDistance(miles: unknown): string {
   if (typeof miles !== "number" || !Number.isFinite(miles) || miles <= 0) return "—";

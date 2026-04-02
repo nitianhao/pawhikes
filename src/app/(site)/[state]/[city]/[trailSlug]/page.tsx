@@ -58,7 +58,7 @@ import {
 import { getTrailSystemsIndex } from "@/lib/data/trailSystemsIndex";
 import { resolveRelatedTrails } from "@/lib/trails/relatedTrails";
 import { trailDescription as trailMetaDescription, trailTitle as trailMetaTitle } from "@/lib/seo/ctr";
-export const revalidate = 900;
+export const revalidate = 3600;
 
 const UUID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

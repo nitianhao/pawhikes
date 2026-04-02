@@ -24,7 +24,7 @@ import { getTrailSystemsIndex, type TrailSystemsIndexRecord } from "@/lib/data/t
 import type { TrailCardData } from "@/components/city/CityTrailCardList.client";
 import { CityTrailCardList } from "@/components/city/CityTrailCardList.client";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 function cityTrails(
   systems: TrailSystemsIndexRecord[],

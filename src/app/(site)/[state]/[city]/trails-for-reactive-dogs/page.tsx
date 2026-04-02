@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DogTypeLandingPage, generateDogTypeMetadata } from "../_dogTypePage";
 
-export const revalidate = 1800;
+export const revalidate = 3600;
 
 export async function generateMetadata(args: {
   params: Promise<{ state: string; city: string }>;
