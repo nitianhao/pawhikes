@@ -5,7 +5,7 @@ import { canonicalTrailSlug, normalizeState } from "@/lib/trailSlug";
 import type { TrailSystemsIndexRecord } from "@/lib/data/trailSystemsIndex";
 import { resolveStateName } from "@/lib/seo/entities";
 
-export const RELATED_TRAILS_LIMIT = 3;
+export const RELATED_TRAILS_LIMIT = 8;
 
 export type RelatedTrailCardCandidate = {
   id: string;

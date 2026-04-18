@@ -343,6 +343,46 @@ export default async function CityPage({
   const dogNeedLinks = evaluateLongTailIntentsForCity(trailsInCity)
     .filter((entry) => entry.indexable)
     .slice(0, 3);
+  // ── City-level narrative stats (used for the unique prose block) ──────────
+  const distanceBuckets = trailCards.reduce(
+    (acc, t) => {
+      const m = t.distanceMiles;
+      if (m == null) return acc;
+      if (m < 3) acc.short += 1;
+      else if (m <= 6) acc.medium += 1;
+      else acc.long += 1;
+      return acc;
+    },
+    { short: 0, medium: 0, long: 0 }
+  );
+  const longestTrail = trailCards
+    .filter((t) => t.distanceMiles != null)
+    .sort((a, b) => (b.distanceMiles ?? 0) - (a.distanceMiles ?? 0))[0] ?? null;
+  const mostShadedTrail = trailCards
+    .filter((t) => t.shadePct != null && (t.shadePct ?? 0) > 0)
+    .sort((a, b) => (b.shadePct ?? 0) - (a.shadePct ?? 0))[0] ?? null;
+  const waterExampleTrail =
+    trailCards.find((t) => t.swimLikely === true) ??
+    trailCards
+      .filter((t) => (t.waterNearPct ?? 0) >= 0.2)
+      .sort((a, b) => (b.waterNearPct ?? 0) - (a.waterNearPct ?? 0))[0] ??
+    null;
+  const leashLower = (t: TrailCardData) =>
+    `${t.leashPolicy ?? ""} ${t.dogsAllowed ?? ""}`.toLowerCase();
+  const leashRequiredCount = trailCards.filter((t) => {
+    const s = leashLower(t);
+    return s && !/off[- ]?leash/.test(s) && /leash/.test(s) && /required|must be on leash|on leash/.test(s);
+  }).length;
+  const offLeashFriendlyCount = trailCards.filter((t) => {
+    const s = leashLower(t);
+    return s && /off[- ]?leash|leash optional|leash not required/.test(s);
+  }).length;
+  const leashKnownCount = trailCards.filter((t) => Boolean(t.leashPolicy)).length;
+  const maxElevationGainFt = trailCards.reduce(
+    (max, t) => (t.elevationGainFt != null && t.elevationGainFt > max ? t.elevationGainFt : max),
+    0
+  );
+
   const trailListSchema = itemListSchema({
     name: `Dog-friendly trails in ${cityLabel}, ${stateName}`,
     path: cityPath,
@@ -504,13 +544,64 @@ export default async function CityPage({
         <h2 style={{ fontSize: "1.05rem", margin: 0, color: "#111827" }}>
           Dog-Friendly Hikes, Trails, and Walking Paths in {cityLabel}
         </h2>
-        <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.35rem 0 0", lineHeight: 1.6 }}>
-          If you&apos;re comparing dog-friendly hikes in {cityLabel}, this page brings local trail options into one
-          place so you can evaluate them side by side. You can review {systemCount} dog-friendly{" "}
-          {systemCount === 1 ? "trail" : "trails"} and walking paths, then open each trail page for detailed
-          leash rules, shade coverage, water access, trail length, and terrain signals. Instead of scanning generic
-          listings, use these city-level comparisons to narrow down which routes best match your dog&apos;s comfort,
-          energy level, and preferred walking or hiking conditions.
+        <p style={{ fontSize: "0.8rem", color: "#374151", margin: "0.45rem 0 0", lineHeight: 1.65 }}>
+          {cityLabel}&apos;s dog-friendly trail network spans{" "}
+          <strong>{formatMiles(totalMiles)} total miles</strong> across {systemCount}{" "}
+          {systemCount === 1 ? "system" : "systems"}
+          {distanceBuckets.short + distanceBuckets.medium + distanceBuckets.long > 0 && (
+            <>
+              {" "}— {distanceBuckets.short} short {distanceBuckets.short === 1 ? "route" : "routes"} under 3 miles,{" "}
+              {distanceBuckets.medium} medium {distanceBuckets.medium === 1 ? "route" : "routes"} between 3 and 6 miles, and{" "}
+              {distanceBuckets.long} longer {distanceBuckets.long === 1 ? "hike" : "hikes"} above 6 miles
+            </>
+          )}
+          .
+          {longestTrail && longestTrail.distanceMiles != null && (
+            <>
+              {" "}The longest is{" "}
+              <Link href={longestTrail.href} style={{ color: "#166534", fontWeight: 500 }}>
+                {longestTrail.name}
+              </Link>{" "}
+              at {longestTrail.distanceMiles.toFixed(1)} miles
+              {maxElevationGainFt > 0 && `, with the city's biggest mapped elevation gain reaching ${maxElevationGainFt.toLocaleString()} ft`}
+              .
+            </>
+          )}
+          {mostShadedTrail && mostShadedTrail.shadePct != null && (
+            <>
+              {" "}Tree cover varies:{" "}
+              <Link href={mostShadedTrail.href} style={{ color: "#166534", fontWeight: 500 }}>
+                {mostShadedTrail.name}
+              </Link>{" "}
+              has the highest mapped shade coverage at {(mostShadedTrail.shadePct * 100).toFixed(0)}%
+              {avgShadePct != null && `, and citywide the average is ${(avgShadePct * 100).toFixed(0)}%`}
+              {avgShadePct != null && avgShadePct < 0.25 && " — plan hikes for cooler parts of the day if your dog runs warm"}
+              {avgShadePct != null && avgShadePct >= 0.25 && avgShadePct < 0.5 && " — partial shade makes early morning and late afternoon easier on paws"}
+              {avgShadePct != null && avgShadePct >= 0.5 && " — plenty of tree cover for warm-weather walks"}
+              .
+            </>
+          )}
+          {waterExampleTrail && (
+            <>
+              {" "}
+              <Link href={waterExampleTrail.href} style={{ color: "#166534", fontWeight: 500 }}>
+                {waterExampleTrail.name}
+              </Link>{" "}
+              sits near water
+              {waterExampleTrail.swimLikely === true && " and is a candidate for a supervised swim"}
+              , useful for rest stops on hot days.
+            </>
+          )}
+          {leashKnownCount > 0 && (
+            <>
+              {" "}Leash signals are reported on {leashKnownCount} of {systemCount} trails:{" "}
+              {leashRequiredCount > 0 && `${leashRequiredCount} list a leash requirement`}
+              {leashRequiredCount > 0 && offLeashFriendlyCount > 0 && ", and "}
+              {offLeashFriendlyCount > 0 && `${offLeashFriendlyCount} note off-leash-friendly areas`}
+              {leashRequiredCount === 0 && offLeashFriendlyCount === 0 && "policy wording varies by location"}
+              . Rules change often — confirm the current posting on each trail page before you go.
+            </>
+          )}
         </p>
       </section>
 
@@ -656,6 +747,60 @@ export default async function CityPage({
       <Suspense fallback={null}>
         <CityTrailCardList trails={trailCards} />
       </Suspense>
+
+      {/* ── Crawlable trail index (SSR: ensures every trail URL is in initial HTML) ── */}
+      {trailCards.length > 0 && (
+        <nav
+          aria-label={`All dog-friendly trails in ${cityLabel}`}
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: "14px",
+            background: "#fff",
+            padding: "0.95rem 1rem",
+            marginTop: "1.25rem",
+          }}
+        >
+          <h2 style={{ fontSize: "1.05rem", margin: 0, color: "#111827" }}>
+            All {trailCards.length} Dog-Friendly {trailCards.length === 1 ? "Trail" : "Trails"} in {cityLabel}
+          </h2>
+          <p style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.3rem 0 0.65rem", lineHeight: 1.5 }}>
+            Full alphabetical index of dog-friendly trails and walking paths in {cityLabel}. Tap a trail to open its detailed guide.
+          </p>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(13rem, 1fr))",
+              columnGap: "0.75rem",
+              rowGap: "0.3rem",
+            }}
+          >
+            {[...trailCards]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((trail) => (
+                <li key={`index-${trail.id}`} style={{ fontSize: "0.8125rem", lineHeight: 1.45 }}>
+                  <Link
+                    href={trail.href}
+                    style={{
+                      color: "#166534",
+                      textDecoration: "none",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {trail.name}
+                  </Link>
+                  {trail.distance && trail.distance !== "—" && (
+                    <span style={{ color: "#9ca3af", marginLeft: "0.35rem" }}>
+                      · {trail.distance}
+                    </span>
+                  )}
+                </li>
+              ))}
+          </ul>
+        </nav>
+      )}
 
       <section
         style={{

@@ -17,8 +17,6 @@ export type IndexablePath = {
 
 type TrailSystemRecord = Record<string, unknown>;
 
-const FALLBACK_LAST_MODIFIED = new Date("2025-01-01T00:00:00.000Z");
-
 function parseLastModified(value: unknown): Date | null {
   if (typeof value === "number" && Number.isFinite(value)) {
     const date = new Date(value);
@@ -31,13 +29,14 @@ function parseLastModified(value: unknown): Date | null {
   return null;
 }
 
-function trailLastModified(record: TrailSystemRecord): Date {
+function trailLastModified(record: TrailSystemRecord, fallback: Date): Date {
   return (
+    parseLastModified(record.computedAt) ??
     parseLastModified(record.updatedAt) ??
     parseLastModified(record.lastUpdatedAt) ??
     parseLastModified(record.modifiedAt) ??
     parseLastModified(record.sourceUpdatedAt) ??
-    FALLBACK_LAST_MODIFIED
+    fallback
   );
 }
 
@@ -72,6 +71,7 @@ const loadTrailSystemsCached = unstable_cache(
             "lastUpdatedAt",
             "modifiedAt",
             "sourceUpdatedAt",
+            "computedAt",
           ],
         },
       },
@@ -120,6 +120,7 @@ function dedupePaths(paths: IndexablePath[]): IndexablePath[] {
 
 export async function loadIndexablePaths(): Promise<IndexablePath[]> {
   const systems = await loadTrailSystems();
+  const now = new Date();
 
   const stateMap = new Map<string, { lastModified: Date; trailCount: number; citySet: Set<string> }>();
   const cityMap = new Map<string, { lastModified: Date; trailCount: number }>();
@@ -153,7 +154,7 @@ export async function loadIndexablePaths(): Promise<IndexablePath[]> {
       id: (system.id as string | null | undefined) ?? null,
       extSystemRef: (system.extSystemRef as string | null | undefined) ?? null,
     });
-    const modified = trailLastModified(system);
+    const modified = trailLastModified(system, now);
 
     const statePath = `/${encodeURIComponent(state)}`;
     const cityPath = `/${encodeURIComponent(state)}/${encodeURIComponent(citySlug)}`;
@@ -184,7 +185,7 @@ export async function loadIndexablePaths(): Promise<IndexablePath[]> {
     });
   }
 
-  const root = [{ path: "/", lastModified: FALLBACK_LAST_MODIFIED }];
+  const root = [{ path: "/", lastModified: now }];
   const statePaths = Array.from(stateMap.entries())
     .filter(([, entry]) => isIndexableStateEntry(entry))
     .map(([path, entry]) => ({
@@ -207,7 +208,7 @@ export async function loadIndexablePaths(): Promise<IndexablePath[]> {
     const citySlug = parts[1] ?? "";
     if (!stateCode || !citySlug) continue;
     const evaluations = evaluateDogTypeIntentsForCity(trails);
-    const cityLastModified = cityMap.get(cityPath)?.lastModified ?? FALLBACK_LAST_MODIFIED;
+    const cityLastModified = cityMap.get(cityPath)?.lastModified ?? now;
     for (const evaluation of evaluations) {
       if (!evaluation.indexable) continue;
       dogTypePaths.push({
