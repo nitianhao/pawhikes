@@ -106,22 +106,67 @@ function trailAttributePhrase(input: {
   return bits.slice(0, 2).join(" · ");
 }
 
+/**
+ * Picks the single most distinctive descriptor for a trail so titles vary across
+ * the catalog instead of all ending in the same "(Dog Access & Leash Rules)"
+ * suffix — which made ~900 pages near-duplicate titles and fed Google's
+ * low-differentiation clustering. Priority order surfaces the rarest/strongest
+ * signal first to maximize spread.
+ */
+function trailDescriptor(input: {
+  leashPolicy: string | null;
+  shadeClass: string | null;
+  waterNearPercent: number | null;
+  surface: string | null;
+  distanceMiles: number | null;
+}): string {
+  const policy = policySnippet(input.leashPolicy);
+  if (policy && /off-leash/.test(policy)) return "Off-Leash Dog Trail";
+
+  const waterPct =
+    input.waterNearPercent != null
+      ? input.waterNearPercent <= 1
+        ? input.waterNearPercent * 100
+        : input.waterNearPercent
+      : null;
+  if (waterPct != null && waterPct >= 40) return "Waterside Dog Trail";
+
+  if (input.shadeClass && /(dense|high|full)/i.test(input.shadeClass)) return "Shaded Dog Trail";
+
+  if (input.surface && /(paved|asphalt|concrete)/i.test(input.surface)) return "Paved Dog Walk";
+
+  if (input.distanceMiles != null) {
+    if (input.distanceMiles >= 5) return "Long Dog Hike";
+    if (input.distanceMiles < 2) return "Easy Dog Walk";
+  }
+
+  return "Dog-Friendly Trail";
+}
+
 export function trailTitle(input: {
   trailName: string;
   cityName: string | null;
   stateCode: string | null;
   leashPolicy: string | null;
+  shadeClass?: string | null;
+  waterNearPercent?: number | null;
+  surface?: string | null;
+  distanceMiles?: number | null;
 }): string {
   const name = normalizeEntityName(input.trailName, "Trail");
   const location = input.cityName && input.stateCode ? ` in ${input.cityName}, ${input.stateCode}` : "";
-  const policy = policySnippet(input.leashPolicy);
-  if (policy && /off-leash/.test(policy)) {
-    return `${name}${location} (Off-Leash & Dog Policy)`;
-  }
-  if (policy) {
-    return `${name}${location} (Dog Access & Leash Rules)`;
-  }
-  return `${name}${location} Dog-Friendly Trail Guide`;
+  const dist =
+    input.distanceMiles != null && Number.isFinite(input.distanceMiles)
+      ? `${input.distanceMiles.toFixed(1)}-mi `
+      : "";
+  const descriptor = trailDescriptor({
+    leashPolicy: input.leashPolicy,
+    shadeClass: input.shadeClass ?? null,
+    waterNearPercent: input.waterNearPercent ?? null,
+    surface: input.surface ?? null,
+    distanceMiles: input.distanceMiles ?? null,
+  });
+  return `${name}${location}: ${dist}${descriptor}`;
 }
 
 export function trailDescription(input: {

@@ -340,6 +340,10 @@ export async function generateMetadata({
       cityName: cityLabel,
       stateCode,
       leashPolicy: typeof trail.leashPolicy === "string" ? trail.leashPolicy : null,
+      shadeClass: typeof trail.shadeClass === "string" ? trail.shadeClass : null,
+      waterNearPercent: typeof trail.waterNearPercent === "number" ? trail.waterNearPercent : null,
+      surface: trailSurface,
+      distanceMiles: lengthMiles,
     }),
     description: trailMetaDescription({
       trailName: name,

@@ -16,12 +16,17 @@ function envNumber(name: string, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// Thresholds tuned to prune the thin programmatic long tail. A new domain with
+// ~1,700 near-templated pages triggers conservative indexing ("Crawled - currently
+// not indexed") and site-wide quality dilution. Indexing only substantial, richly
+// enriched trails (≈940 vs 1,700) raises average page quality so Google indexes a
+// higher share. All values remain env-overridable for tuning without a redeploy.
 export const INDEXATION_THRESHOLDS = {
   minStateCities: envNumber("SEO_MIN_STATE_CITIES", 1),
   minStateTrails: envNumber("SEO_MIN_STATE_TRAILS", 2),
-  minCityTrails: envNumber("SEO_MIN_CITY_TRAILS", 2),
-  minTrailLengthMiles: envNumber("SEO_MIN_TRAIL_LENGTH_MILES", 1),
-  minTrailSignals: envNumber("SEO_MIN_TRAIL_SIGNALS", 2),
+  minCityTrails: envNumber("SEO_MIN_CITY_TRAILS", 3),
+  minTrailLengthMiles: envNumber("SEO_MIN_TRAIL_LENGTH_MILES", 2),
+  minTrailSignals: envNumber("SEO_MIN_TRAIL_SIGNALS", 4),
 };
 
 export function hasNonCanonicalQueryParams(
