@@ -21,6 +21,7 @@ import { resolveStateName } from "@/lib/seo/entities";
 import { pickDirectoryOgImage } from "@/lib/seo/media";
 import {
   evaluateCityIndexability,
+  evaluateTrailIndexability,
   isWellFormedCityParam,
   isWellFormedStateParam,
 } from "@/lib/seo/indexation";
@@ -110,8 +111,24 @@ function filterCitySystems(
     const matchesCity =
       systemCity === normalizedTargetCity ||
       (!systemCity && normalizedTargetCity === "unknown city");
-    const length = typeof system.lengthMilesTotal === "number" ? system.lengthMilesTotal : 0;
-    return matchesState && matchesCity && length > 1;
+    if (!matchesState || !matchesCity) return false;
+    // Only list trails whose own pages are indexable, so the city page's count,
+    // list, map pins, and stats stay consistent with the sitemap and don't feed
+    // Google crawl paths to noindex pages. (Index records omit parkingCount/
+    // trailheadPOIs/highlights/faqs — slight signal undercount, acceptable here.)
+    return evaluateTrailIndexability({
+      name: system.name,
+      city: system.city,
+      state: system.state,
+      lengthMilesTotal: system.lengthMilesTotal,
+      dogsAllowed: system.dogsAllowed,
+      leashPolicy: system.leashPolicy,
+      shadeProxyPercent: system.shadeProxyPercent,
+      waterNearPercent: system.waterNearPercent,
+      swimLikely: system.swimLikely,
+      surfaceSummary: system.surfaceSummary,
+      elevationGainFt: system.elevationGainFt,
+    }).indexable;
   });
 }
 
