@@ -303,11 +303,6 @@ export function AmenityProfileChart({ points, totalMiles }: Props) {
                         {cluster.count}
                       </text>
                     ) : null}
-                    <title>
-                      {cluster.count === 1
-                        ? `${meta.label} at ${cluster.minD.toFixed(1)} mi`
-                        : `${cluster.count} ${meta.label.toLowerCase()} near ${cluster.minD.toFixed(1)}-${cluster.maxD.toFixed(1)} mi`}
-                    </title>
                   </g>
                 );
               })}

@@ -150,6 +150,7 @@ export function SurfaceProfileChart({ points, totalMiles }: Props) {
         viewBox={`0 0 ${W} ${SVG_H}`}
         width="100%"
         style={{ display: "block", overflow: "visible" }}
+        role="img"
         aria-label="Trail surface profile chart"
       >
         {/* Surface segments */}
@@ -157,7 +158,6 @@ export function SurfaceProfileChart({ points, totalMiles }: Props) {
           const w = Math.max(0.5, seg.x2 - seg.x1);
           return (
             <g key={i}>
-              <title>{getLabel(seg.surface)}</title>
               <rect
                 x={seg.x1}
                 y={PAD_TOP}

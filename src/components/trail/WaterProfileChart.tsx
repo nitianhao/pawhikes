@@ -102,6 +102,7 @@ export function WaterProfileChart({ points, totalMiles }: Props) {
         viewBox={`0 0 ${W} ${SVG_H}`}
         width="100%"
         style={{ display: "block" }}
+        role="img"
         aria-label="Trail water profile chart"
       >
         {/* Segments */}
@@ -116,10 +117,6 @@ export function WaterProfileChart({ points, totalMiles }: Props) {
               rx={i === 0 ? 4 : 0}
               ry={i === 0 ? 4 : 0}
             />
-            <title>{seg.type === "dry"
-              ? `Dry — no water within 200 m`
-              : `${TYPE_LABEL[seg.type] ?? seg.type}`}
-            </title>
           </g>
         ))}
         {/* Right-end rounding cap — last segment */}

@@ -208,8 +208,6 @@ export function HighlightProfileChart({ points, totalMiles }: Props) {
                       stroke={isActive ? "white" : "white"}
                       strokeWidth={isActive ? "2" : "1.5"}
                     />
-
-                    <title>{tooltip}</title>
                   </g>
                 );
               })}
