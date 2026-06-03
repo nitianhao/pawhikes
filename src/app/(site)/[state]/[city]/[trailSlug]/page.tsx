@@ -33,6 +33,7 @@ import { normalizeVisibleFaqs } from "@/components/trails/TrailFaqSection";
 import { RelatedTrailsSection } from "@/components/trails/RelatedTrailsSection";
 import { DogSuitabilitySummary } from "@/components/trails/DogSuitabilitySummary";
 import { SectionNav } from "@/components/trail/SectionNav.client";
+import { buildTrailOverview } from "@/lib/seo/trailOverview";
 import type { TrailHeadRow } from "@/lib/data/trailSystem";
 import { canonicalTrailSlug, normalizeState } from "@/lib/trailSlug";
 import { buildPageMetadata } from "@/lib/seo/metadata";
@@ -746,6 +747,27 @@ export default async function TrailDetailPage({
         </Link>
         ? Use the sections below for dog policy, access points, shade/heat, water, terrain, and safety.
       </p>
+
+      {(() => {
+        const overview = buildTrailOverview((system ?? {}) as Record<string, unknown>);
+        if (overview.length === 0) return null;
+        return (
+          <section
+            aria-label="Trail overview"
+            style={{
+              marginTop: "1rem",
+              padding: "0.9rem 1.1rem",
+              background: "var(--bark-green-50, #f0fdf4)",
+              borderLeft: "3px solid var(--bark-green-700, #15803d)",
+              borderRadius: "0.5rem",
+            }}
+          >
+            <p style={{ margin: 0, color: "#334155", fontSize: "0.95rem", lineHeight: 1.7 }}>
+              {overview.join(" ")}
+            </p>
+          </section>
+        );
+      })()}
 
       <SectionNav />
 
