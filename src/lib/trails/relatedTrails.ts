@@ -4,6 +4,7 @@ import { slugifyCity } from "@/lib/slug";
 import { canonicalTrailSlug, normalizeState } from "@/lib/trailSlug";
 import type { TrailSystemsIndexRecord } from "@/lib/data/trailSystemsIndex";
 import { resolveStateName } from "@/lib/seo/entities";
+import { evaluateTrailIndexability } from "@/lib/seo/indexation";
 
 export const RELATED_TRAILS_LIMIT = 8;
 
@@ -54,15 +55,25 @@ function asName(value: unknown): string {
   return name.length > 0 ? name : "Unnamed trail";
 }
 
+// Only surface trails whose own pages are indexable. Linking related blocks to
+// noindex thin trails wastes crawl budget — the dominant constraint behind the
+// "Discovered - currently not indexed" backlog on this low-authority domain.
+// (Index records omit parkingCount/trailheadPOIs/highlights/faqs, so the signal
+// count is a slight undercount — acceptable for a recommendation block.)
 function isBrowseable(record: TrailSystemsIndexRecord): boolean {
-  const hasName = String(record.name ?? "").trim().length > 0;
-  const hasCity = String(record.city ?? "").trim().length > 0;
-  const hasState = String(record.state ?? "").trim().length > 0;
-  const hasDistance =
-    typeof record.lengthMilesTotal === "number" &&
-    Number.isFinite(record.lengthMilesTotal) &&
-    record.lengthMilesTotal > 1;
-  return hasName && hasCity && hasState && hasDistance;
+  return evaluateTrailIndexability({
+    name: record.name,
+    city: record.city,
+    state: record.state,
+    lengthMilesTotal: record.lengthMilesTotal,
+    dogsAllowed: record.dogsAllowed,
+    leashPolicy: record.leashPolicy,
+    shadeProxyPercent: record.shadeProxyPercent,
+    waterNearPercent: record.waterNearPercent,
+    swimLikely: record.swimLikely,
+    surfaceSummary: record.surfaceSummary,
+    elevationGainFt: record.elevationGainFt,
+  }).indexable;
 }
 
 function completenessScore(record: TrailSystemsIndexRecord): number {
@@ -182,7 +193,9 @@ export function resolveRelatedTrails(input: ResolveRelatedTrailsInput): RelatedT
   const currentCity = normalizeCityKey(input.currentTrail.city);
 
   const deduped = dedupeByTrailId(input.candidates);
-  const filtered = deduped.filter((record) => String(record.id ?? "").trim() !== currentId);
+  const filtered = deduped.filter(
+    (record) => String(record.id ?? "").trim() !== currentId && isBrowseable(record)
+  );
 
   const sameCity = sortStable(
     filtered.filter((record) => {
